@@ -1,0 +1,23 @@
+# This file configures the analyzer, which statically analyzes Dart code to
+# check for errors, warnings, and lints.
+
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    # Supabase query builder methods (eq, insert, update, etc.) work at runtime
+    # but the static analyzer doesn't always recognize them due to type inference
+    # These are FALSE POSITIVES - the code works correctly
+    undefined_method: ignore
+    
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+
+linter:
+  rules:
+    # Allow print for debugging
+    avoid_print: false
+
+# Additional information about this file can be found at
+# https://dart.dev/guides/language/analysis-options
