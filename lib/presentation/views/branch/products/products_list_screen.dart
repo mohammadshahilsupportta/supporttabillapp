@@ -78,9 +78,9 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                _buildStatisticsCards(context, theme),
-                const SizedBox(height: 12),
                 _buildFilterBar(context, theme),
+                const SizedBox(height: 12),
+                _buildStatisticsCards(context, theme),
                 const SizedBox(height: 24),
                 Center(
                   child: Column(
@@ -111,21 +111,20 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
           },
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: filtered.length + 2, // +1 for filter bar, +1 for stats
+            itemCount:
+                filtered.length + 1, // +1 for header (filter bar + stats)
             itemBuilder: (context, index) {
               if (index == 0) {
-                return _buildStatisticsCards(context, theme);
-              }
-              if (index == 1) {
                 return Column(
                   children: [
-                    const SizedBox(height: 12),
                     _buildFilterBar(context, theme),
+                    const SizedBox(height: 12),
+                    _buildStatisticsCards(context, theme),
                     const SizedBox(height: 12),
                   ],
                 );
               }
-              final product = filtered[index - 2];
+              final product = filtered[index - 1];
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -507,15 +506,18 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
     Color? valueColor,
     bool highlightBackground = false,
   }) {
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       width: 110,
       decoration: BoxDecoration(
         color: highlightBackground
-            ? borderColor.withValues(alpha: 0.08)
+            ? borderColor.withValues(alpha: isDark ? 0.2 : 0.08)
+            : isDark
+            ? theme.colorScheme.surfaceContainerHighest
             : Colors.grey.shade50,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: borderColor.withValues(alpha: 0.5),
+          color: borderColor.withValues(alpha: isDark ? 0.7 : 0.5),
           width: 1.5,
         ),
       ),
@@ -533,7 +535,9 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                   child: Text(
                     title,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: Colors.grey.shade700,
+                      color: isDark
+                          ? theme.colorScheme.onSurfaceVariant
+                          : Colors.grey.shade700,
                       fontSize: 10,
                       fontWeight: FontWeight.w500,
                     ),
@@ -597,6 +601,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
 
   /// Build compact search + filter bar in single row
   Widget _buildFilterBar(BuildContext context, ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
     return Card(
       elevation: 1,
       margin: EdgeInsets.zero,
@@ -609,21 +614,42 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
             TextField(
               decoration: InputDecoration(
                 hintText: 'Search products...',
-                prefixIcon: const Icon(Icons.search, size: 20),
+                prefixIcon: Icon(
+                  Icons.search,
+                  size: 20,
+                  color: isDark
+                      ? theme.colorScheme.onSurfaceVariant
+                      : Colors.grey.shade600,
+                ),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 12,
                 ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+                  borderSide: BorderSide(
+                    color: isDark
+                        ? theme.colorScheme.outline
+                        : Colors.grey.shade300,
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+                  borderSide: BorderSide(
+                    color: isDark
+                        ? theme.colorScheme.outline
+                        : Colors.grey.shade300,
+                  ),
                 ),
                 filled: true,
-                fillColor: Colors.grey.shade50,
+                fillColor: isDark
+                    ? theme.colorScheme.surfaceContainerHighest
+                    : Colors.grey.shade50,
+                hintStyle: TextStyle(
+                  color: isDark
+                      ? theme.colorScheme.onSurfaceVariant
+                      : Colors.grey.shade600,
+                ),
               ),
               style: theme.textTheme.bodyMedium,
               onChanged: (value) {
@@ -640,9 +666,15 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                   child: Obx(
                     () => Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(
+                          color: isDark
+                              ? theme.colorScheme.outline
+                              : Colors.grey.shade300,
+                        ),
                         borderRadius: BorderRadius.circular(10),
-                        color: Colors.grey.shade50,
+                        color: isDark
+                            ? theme.colorScheme.surfaceContainerHighest
+                            : Colors.grey.shade50,
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
@@ -653,21 +685,31 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                             horizontal: 8,
                             vertical: 8,
                           ),
-                          icon: const Icon(Icons.arrow_drop_down, size: 18),
+                          icon: Icon(
+                            Icons.arrow_drop_down,
+                            size: 18,
+                            color: isDark
+                                ? theme.colorScheme.onSurfaceVariant
+                                : Colors.grey.shade600,
+                          ),
                           hint: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 Icons.category_outlined,
                                 size: 14,
-                                color: Colors.grey.shade600,
+                                color: isDark
+                                    ? theme.colorScheme.onSurfaceVariant
+                                    : Colors.grey.shade600,
                               ),
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
                                   'Category',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey.shade600,
+                                    color: isDark
+                                        ? theme.colorScheme.onSurfaceVariant
+                                        : Colors.grey.shade600,
                                     fontSize: 12,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -706,9 +748,15 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                   child: Obx(
                     () => Container(
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
+                        border: Border.all(
+                          color: isDark
+                              ? theme.colorScheme.outline
+                              : Colors.grey.shade300,
+                        ),
                         borderRadius: BorderRadius.circular(10),
-                        color: Colors.grey.shade50,
+                        color: isDark
+                            ? theme.colorScheme.surfaceContainerHighest
+                            : Colors.grey.shade50,
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
@@ -719,21 +767,31 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                             horizontal: 8,
                             vertical: 8,
                           ),
-                          icon: const Icon(Icons.arrow_drop_down, size: 18),
+                          icon: Icon(
+                            Icons.arrow_drop_down,
+                            size: 18,
+                            color: isDark
+                                ? theme.colorScheme.onSurfaceVariant
+                                : Colors.grey.shade600,
+                          ),
                           hint: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
                                 Icons.branding_watermark_outlined,
                                 size: 14,
-                                color: Colors.grey.shade600,
+                                color: isDark
+                                    ? theme.colorScheme.onSurfaceVariant
+                                    : Colors.grey.shade600,
                               ),
                               const SizedBox(width: 4),
                               Flexible(
                                 child: Text(
                                   'Brand',
                                   style: theme.textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey.shade600,
+                                    color: isDark
+                                        ? theme.colorScheme.onSurfaceVariant
+                                        : Colors.grey.shade600,
                                     fontSize: 12,
                                   ),
                                   overflow: TextOverflow.ellipsis,
@@ -771,9 +829,15 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                 Expanded(
                   child: Container(
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.grey.shade300),
+                      border: Border.all(
+                        color: isDark
+                            ? theme.colorScheme.outline
+                            : Colors.grey.shade300,
+                      ),
                       borderRadius: BorderRadius.circular(10),
-                      color: Colors.grey.shade50,
+                      color: isDark
+                          ? theme.colorScheme.surfaceContainerHighest
+                          : Colors.grey.shade50,
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
@@ -784,21 +848,31 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                           horizontal: 8,
                           vertical: 8,
                         ),
-                        icon: const Icon(Icons.arrow_drop_down, size: 18),
+                        icon: Icon(
+                          Icons.arrow_drop_down,
+                          size: 18,
+                          color: isDark
+                              ? theme.colorScheme.onSurfaceVariant
+                              : Colors.grey.shade600,
+                        ),
                         hint: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.toggle_on_outlined,
                               size: 14,
-                              color: Colors.grey.shade600,
+                              color: isDark
+                                  ? theme.colorScheme.onSurfaceVariant
+                                  : Colors.grey.shade600,
                             ),
                             const SizedBox(width: 4),
                             Flexible(
                               child: Text(
                                 'Status',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey.shade600,
+                                  color: isDark
+                                      ? theme.colorScheme.onSurfaceVariant
+                                      : Colors.grey.shade600,
                                   fontSize: 12,
                                 ),
                                 overflow: TextOverflow.ellipsis,
