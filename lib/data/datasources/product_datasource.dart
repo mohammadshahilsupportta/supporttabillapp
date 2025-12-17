@@ -21,6 +21,27 @@ class ProductDataSource {
     }
   }
 
+  // Get products by tenant with pagination
+  Future<List<Product>> getProductsByTenantPaginated(
+    String tenantId, {
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    try {
+      final data = await _supabase
+          .from('products')
+          .select('*, category:categories(*), brand:brands(*)')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1);
+
+      return (data as List).map((json) => Product.fromJson(json)).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch products: ${e.toString()}');
+    }
+  }
+
   // Get product by ID
   Future<Product> getProductById(String productId) async {
     try {

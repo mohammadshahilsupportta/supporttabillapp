@@ -111,8 +111,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
           },
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount:
-                filtered.length + 1, // +1 for header (filter bar + stats)
+            itemCount: filtered.length + 1, // +1 for header
             itemBuilder: (context, index) {
               if (index == 0) {
                 return Column(
@@ -124,6 +123,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                   ],
                 );
               }
+
               final product = filtered[index - 1];
 
               return Card(
