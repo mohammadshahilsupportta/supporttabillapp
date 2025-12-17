@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
 import '../../controllers/auth_controller.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -159,57 +160,14 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-
-                    // Demo Credentials (for testing)
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: theme.primaryColor.withOpacity(0.05),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: theme.primaryColor.withOpacity(0.2),
-                        ),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.info_outline,
-                                size: 16,
-                                color: theme.primaryColor,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Demo Credentials',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: theme.primaryColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Superadmin: superadmin@example.com\n'
-                            'Owner: owner@example.com\n'
-                            'Admin: admin@example.com\n'
-                            'Password: password123',
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ],
-                      ),
-                    ),
                     const SizedBox(height: 48),
 
                     // Footer
-                    Text(
-                      '© 2024 Supportta Bill Book\nAll rights reserved',
-                      style: theme.textTheme.bodySmall,
-                      textAlign: TextAlign.center,
-                    ),
+                    // Text(
+                    //   '© 2024 Supportta Bill Book\nAll rights reserved',
+                    //   style: theme.textTheme.bodySmall,
+                    //   textAlign: TextAlign.center,
+                    // ),
                   ],
                 ),
               ),

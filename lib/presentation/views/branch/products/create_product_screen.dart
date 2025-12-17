@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../controllers/product_controller.dart';
+import '../../../../data/models/product_model.dart' show StockTrackingType;
 
 class CreateProductScreen extends StatefulWidget {
   const CreateProductScreen({super.key});
@@ -21,22 +22,29 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   final _minStockController = TextEditingController(text: '5');
   final _descriptionController = TextEditingController();
 
-  String _unit = 'pcs';
+  String _unit = 'Pieces';
   String? _categoryId;
   String? _brandId;
   double _gstRate = 0;
+   // 'quantity' | 'serial' – matches website stock_tracking_type
+  String _stockTrackingType = 'quantity';
   bool _isActive = true;
   bool _isLoading = false;
 
+  // Full unit names (match website UNITS list)
   final List<String> _units = [
-    'pcs',
-    'kg',
-    'g',
-    'l',
-    'ml',
-    'box',
-    'pack',
-    'dozen',
+    'Pieces',
+    'Kilograms',
+    'Grams',
+    'Liters',
+    'ML',
+    'Box',
+    'Pack',
+    'Dozen',
+    'Meters',
+    'Feet',
+    'Sq. Feet',
+    'Sq. Meters',
   ];
   final List<double> _gstRates = [0, 5, 12, 18, 28];
 
@@ -74,31 +82,21 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
             : null,
         categoryId: _categoryId,
         brandId: _brandId,
+        stockTrackingType: _stockTrackingType == 'serial'
+            ? StockTrackingType.serial
+            : StockTrackingType.quantity,
         isActive: _isActive,
       );
 
       if (success) {
+        // Controller already shows a success message
         Get.back();
-        Get.snackbar(
-          'Success',
-          'Product created successfully',
-          backgroundColor: Colors.green,
-          colorText: Colors.white,
-        );
-      } else {
-        Get.snackbar(
-          'Error',
-          'Failed to create product',
-          backgroundColor: Colors.red,
-          colorText: Colors.white,
-        );
       }
     } catch (e) {
       Get.snackbar(
         'Error',
         e.toString(),
-        backgroundColor: Colors.red,
-        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
       );
     } finally {
       setState(() => _isLoading = false);
@@ -194,12 +192,113 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                       items: _units.map((unit) {
                         return DropdownMenuItem<String>(
                           value: unit,
-                          child: Text(unit.toUpperCase()),
+                          child: Text(unit),
                         );
                       }).toList(),
                       onChanged: (value) {
                         if (value != null) setState(() => _unit = value);
                       },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Catalogue Card (Category & Brand) - match website behaviour
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(
+                            Icons.category,
+                            color: Colors.blue,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          'Catalogue',
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    Obx(
+                      () => Column(
+                        children: [
+                          // Category dropdown
+                          DropdownButtonFormField<String>(
+                            value: _categoryId,
+                            decoration: InputDecoration(
+                              labelText: 'Category',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              prefixIcon:
+                                  const Icon(Icons.category_outlined),
+                            ),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text('No Category'),
+                              ),
+                              ...productController.categories
+                                  .where((c) => c.isActive)
+                                  .map(
+                                    (c) => DropdownMenuItem<String>(
+                                      value: c.id,
+                                      child: Text(c.name),
+                                    ),
+                                  ),
+                            ],
+                            onChanged: (value) {
+                              setState(() => _categoryId = value);
+                            },
+                          ),
+                          const SizedBox(height: 12),
+                          // Brand dropdown
+                          DropdownButtonFormField<String>(
+                            value: _brandId,
+                            decoration: InputDecoration(
+                              labelText: 'Brand',
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              prefixIcon:
+                                  const Icon(Icons.branding_watermark),
+                            ),
+                            items: [
+                              const DropdownMenuItem<String>(
+                                value: null,
+                                child: Text('No Brand'),
+                              ),
+                              ...productController.brands
+                                  .where((b) => b.isActive)
+                                  .map(
+                                    (b) => DropdownMenuItem<String>(
+                                      value: b.id,
+                                      child: Text(b.name),
+                                    ),
+                                  ),
+                            ],
+                            onChanged: (value) {
+                              setState(() => _brandId = value);
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -353,6 +452,36 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                         prefixIcon: const Icon(Icons.warning_amber),
                         helperText: 'Alert when stock falls below this level',
                       ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Stock Tracking Type
+                    DropdownButtonFormField<String>(
+                      value: _stockTrackingType,
+                      decoration: InputDecoration(
+                        labelText: 'Stock Tracking Type',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        prefixIcon: const Icon(Icons.format_list_numbered),
+                        helperText:
+                            'Quantity: simple count, Serial: track each piece',
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'quantity',
+                          child: Text('Quantity based'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'serial',
+                          child: Text('Serial number based'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null) {
+                          setState(() => _stockTrackingType = value);
+                        }
+                      },
                     ),
                     const SizedBox(height: 16),
 

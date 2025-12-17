@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/routes/app_routes.dart';
 import '../../../controllers/product_controller.dart';
 import '../../../controllers/stock_controller.dart';
 
@@ -226,12 +227,7 @@ class ProductsListScreen extends StatelessWidget {
       }),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
-          // TODO: Navigate to add product screen
-          Get.snackbar(
-            'Coming Soon',
-            'Add product feature will be available soon',
-            snackPosition: SnackPosition.BOTTOM,
-          );
+          Get.toNamed(AppRoutes.createProduct);
         },
         icon: const Icon(Icons.add),
         label: const Text('Add Product'),

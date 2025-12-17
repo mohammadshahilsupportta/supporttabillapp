@@ -12,7 +12,8 @@ class ProductDataSource {
           .select('*, category:categories(*), brand:brands(*)')
           .eq('tenant_id', tenantId)
           .eq('is_active', true)
-          .order('name', ascending: true);
+          // Match web: latest products first
+          .order('created_at', ascending: false);
 
       return (data as List).map((json) => Product.fromJson(json)).toList();
     } catch (e) {
@@ -38,11 +39,22 @@ class ProductDataSource {
   // Create product
   Future<Product> createProduct(Product product) async {
     try {
-      final data = await _supabase
-          .from('products')
-          .insert(product.toJson())
-          .select('*, category:categories(*), brand:brands(*)')
-          .single();
+      // For inserts, let the database generate id/created_at/updated_at
+      final data = await _supabase.from('products').insert({
+        'tenant_id': product.tenantId,
+        'category_id': product.categoryId,
+        'brand_id': product.brandId,
+        'name': product.name,
+        'sku': product.sku,
+        'unit': product.unit,
+        'selling_price': product.sellingPrice,
+        'purchase_price': product.purchasePrice,
+        'gst_rate': product.gstRate,
+        'min_stock': product.minStock,
+        'description': product.description,
+        'stock_tracking_type': product.stockTrackingType.value,
+        'is_active': product.isActive,
+      }).select('*, category:categories(*), brand:brands(*)').single();
 
       return Product.fromJson(data);
     } catch (e) {
