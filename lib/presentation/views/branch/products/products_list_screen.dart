@@ -83,21 +83,88 @@ class ProductsListScreen extends StatelessWidget {
                       color: theme.primaryColor,
                     ),
                   ),
-                  title: Text(
-                    product.name,
-                    style: theme.textTheme.bodyLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
+                  title: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          product.name,
+                          style: theme.textTheme.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: product.isActive
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.grey.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          product.isActive ? 'Active' : 'Inactive',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: product.isActive ? Colors.green : Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 4),
-                      if (product.category != null)
-                        Text(
-                          product.category!.name,
-                          style: theme.textTheme.bodySmall,
-                        ),
+                      // SKU + Category / Brand row
+                      Row(
+                        children: [
+                          if (product.sku != null &&
+                              (product.sku ?? '').isNotEmpty) ...[
+                            Icon(
+                              Icons.qr_code_2,
+                              size: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                product.sku!,
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  fontFamily: 'monospace',
+                                  color: Colors.grey.shade700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                          if (product.category != null ||
+                              product.brand != null) ...[
+                            if (product.sku != null &&
+                                (product.sku ?? '').isNotEmpty)
+                              const SizedBox(width: 12),
+                            Flexible(
+                              child: Text(
+                                [
+                                  if (product.category != null)
+                                    product.category!.name,
+                                  if (product.brand != null)
+                                    product.brand!.name,
+                                ].join(' • '),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.grey.shade700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
                       const SizedBox(height: 4),
                       Row(
                         children: [
@@ -143,26 +210,58 @@ class ProductsListScreen extends StatelessWidget {
                         ),
                         builder: (context, snapshot) {
                           final stock = snapshot.data ?? 0;
-                          final isLowStock = stock <= product.minStock;
+                          final isLowStock =
+                              product.minStock > 0 && stock <= product.minStock;
+                          final isSoldOut = stock == 0;
 
                           return Row(
                             children: [
                               Icon(
-                                Icons.inventory_outlined,
+                                isSoldOut
+                                    ? Icons.report_gmailerrorred_outlined
+                                    : Icons.inventory_outlined,
                                 size: 14,
-                                color: isLowStock ? Colors.red : Colors.grey,
+                                color: isSoldOut
+                                    ? Colors.red
+                                    : isLowStock
+                                        ? Colors.orange
+                                        : Colors.grey,
                               ),
                               const SizedBox(width: 4),
                               Text(
                                 'Stock: $stock ${product.unit}',
                                 style: theme.textTheme.bodySmall?.copyWith(
-                                  color: isLowStock ? Colors.red : null,
-                                  fontWeight: isLowStock
+                                  color: isSoldOut
+                                      ? Colors.red
+                                      : isLowStock
+                                          ? Colors.orange
+                                          : null,
+                                  fontWeight: (isLowStock || isSoldOut)
                                       ? FontWeight.w600
                                       : null,
                                 ),
                               ),
-                              if (isLowStock) ...[
+                              if (isLowStock && !isSoldOut) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    'Low Stock',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.orange,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                              if (isSoldOut) ...[
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
@@ -174,7 +273,7 @@ class ProductsListScreen extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    'Low Stock',
+                                    'Sold Out',
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: Colors.red,
                                       fontWeight: FontWeight.w600,
