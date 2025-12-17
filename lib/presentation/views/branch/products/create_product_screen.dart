@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../controllers/product_controller.dart';
+import '../../../../core/routes/app_routes.dart';
 import '../../../../data/models/product_model.dart' show StockTrackingType;
 
 class CreateProductScreen extends StatefulWidget {
@@ -89,8 +90,8 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
       );
 
       if (success) {
-        // Controller already shows a success message
-        Get.back();
+        // Controller already shows a success message; navigate to products list.
+        Get.offNamed(AppRoutes.productsList);
       }
     } catch (e) {
       Get.snackbar(

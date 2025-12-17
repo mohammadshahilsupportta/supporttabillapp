@@ -5,54 +5,87 @@ import '../../../../core/routes/app_routes.dart';
 import '../../../controllers/product_controller.dart';
 import '../../../controllers/stock_controller.dart';
 
-class ProductsListScreen extends StatelessWidget {
+class ProductsListScreen extends StatefulWidget {
   const ProductsListScreen({super.key});
+
+  @override
+  State<ProductsListScreen> createState() => _ProductsListScreenState();
+}
+
+class _ProductsListScreenState extends State<ProductsListScreen> {
+  final productController = Get.put(ProductController());
+  final stockController = Get.put(StockController());
+
+  String _searchQuery = '';
+  String? _selectedCategoryId;
+  String? _selectedBrandId;
+  String _statusFilter = 'all'; // all | active | inactive
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final productController = Get.put(ProductController());
-    final stockController = Get.put(StockController());
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Products'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {
-              _showSearchDialog(context, productController);
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.filter_list),
-            onPressed: () {
-              _showFilterDialog(context, productController);
-            },
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('Products')),
       body: Obx(() {
         if (productController.isLoading.value) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        if (productController.filteredProducts.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+        final filtered = _getFilteredProducts();
+
+        if (filtered.isEmpty) {
+          // If there are no products at all from backend, show the original empty state.
+          if (productController.products.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.inventory_2_outlined,
+                    size: 80,
+                    color: theme.primaryColor.withValues(alpha: 0.3),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No products found',
+                    style: theme.textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Products will appear here',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
+              ),
+            );
+          }
+
+          // There are products, but current search/filters returned zero.
+          // Keep user on same screen with filters and a simple message.
+          return RefreshIndicator(
+            onRefresh: () => productController.loadProducts(),
+            child: ListView(
+              padding: const EdgeInsets.all(16),
               children: [
-                Icon(
-                  Icons.inventory_2_outlined,
-                  size: 80,
-                  color: theme.primaryColor.withValues(alpha: 0.3),
-                ),
-                const SizedBox(height: 16),
-                Text('No products found', style: theme.textTheme.headlineSmall),
-                const SizedBox(height: 8),
-                Text(
-                  'Products will appear here',
-                  style: theme.textTheme.bodyMedium,
+                _buildFilterBar(context, theme),
+                const SizedBox(height: 24),
+                Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.search_off_outlined,
+                        size: 60,
+                        color: Colors.grey.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'No products match your search or filters',
+                        style: theme.textTheme.titleMedium,
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -63,9 +96,12 @@ class ProductsListScreen extends StatelessWidget {
           onRefresh: () => productController.loadProducts(),
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: productController.filteredProducts.length,
+            itemCount: filtered.length + 1,
             itemBuilder: (context, index) {
-              final product = productController.filteredProducts[index];
+              if (index == 0) {
+                return _buildFilterBar(context, theme);
+              }
+              final product = filtered[index - 1];
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -111,7 +147,9 @@ class ProductsListScreen extends StatelessWidget {
                           product.isActive ? 'Active' : 'Inactive',
                           style: theme.textTheme.bodySmall?.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: product.isActive ? Colors.green : Colors.grey,
+                            color: product.isActive
+                                ? Colors.green
+                                : Colors.grey,
                           ),
                         ),
                       ),
@@ -224,8 +262,8 @@ class ProductsListScreen extends StatelessWidget {
                                 color: isSoldOut
                                     ? Colors.red
                                     : isLowStock
-                                        ? Colors.orange
-                                        : Colors.grey,
+                                    ? Colors.orange
+                                    : Colors.grey,
                               ),
                               const SizedBox(width: 4),
                               Text(
@@ -234,8 +272,8 @@ class ProductsListScreen extends StatelessWidget {
                                   color: isSoldOut
                                       ? Colors.red
                                       : isLowStock
-                                          ? Colors.orange
-                                          : null,
+                                      ? Colors.orange
+                                      : null,
                                   fontWeight: (isLowStock || isSoldOut)
                                       ? FontWeight.w600
                                       : null,
@@ -334,77 +372,138 @@ class ProductsListScreen extends StatelessWidget {
     );
   }
 
-  void _showSearchDialog(BuildContext context, ProductController controller) {
-    final searchController = TextEditingController();
+  /// Apply search + category/brand/status filters to controller.products.
+  List<dynamic> _getFilteredProducts() {
+    final all = productController.products;
+    final query = _searchQuery.trim().toLowerCase();
 
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Search Products'),
-        content: TextField(
-          controller: searchController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Enter product name or SKU',
-            prefixIcon: Icon(Icons.search),
-          ),
-          onSubmitted: (value) {
-            controller.searchProducts(value);
-            Navigator.pop(context);
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              controller.searchProducts(searchController.text);
-              Navigator.pop(context);
-            },
-            child: const Text('Search'),
-          ),
-        ],
-      ),
-    );
+    return all.where((p) {
+      // Search filter (name, sku, description)
+      if (query.isNotEmpty) {
+        final inName = p.name.toLowerCase().contains(query);
+        final inSku = (p.sku ?? '').toLowerCase().contains(query);
+        final inDesc = (p.description ?? '').toLowerCase().contains(query);
+        if (!inName && !inSku && !inDesc) return false;
+      }
+
+      // Category filter
+      if (_selectedCategoryId != null &&
+          _selectedCategoryId!.isNotEmpty &&
+          p.categoryId != _selectedCategoryId) {
+        return false;
+      }
+
+      // Brand filter
+      if (_selectedBrandId != null &&
+          _selectedBrandId!.isNotEmpty &&
+          p.brandId != _selectedBrandId) {
+        return false;
+      }
+
+      // Status filter
+      if (_statusFilter == 'active' && !p.isActive) return false;
+      if (_statusFilter == 'inactive' && p.isActive) return false;
+
+      return true;
+    }).toList();
   }
 
-  void _showFilterDialog(BuildContext context, ProductController controller) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Filter Products'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.category_outlined),
-              title: const Text('By Category'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Show category selection
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.branding_watermark_outlined),
-              title: const Text('By Brand'),
-              onTap: () {
-                Navigator.pop(context);
-                // TODO: Show brand selection
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.clear),
-              title: const Text('Clear Filters'),
-              onTap: () {
-                controller.clearFilters();
-                Navigator.pop(context);
-              },
-            ),
-          ],
+  /// Build the always-visible search + filter bar at the top, matching website UX.
+  Widget _buildFilterBar(BuildContext context, ThemeData theme) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Search field (backend search)
+        TextField(
+          decoration: const InputDecoration(
+            hintText: 'Search products by name, SKU or description...',
+            prefixIcon: Icon(Icons.search),
+          ),
+          onChanged: (value) {
+            setState(() => _searchQuery = value);
+            productController.searchProducts(value);
+          },
         ),
-      ),
+        const SizedBox(height: 12),
+
+        // Category filter
+        Obx(
+          () => DropdownButtonFormField<String>(
+            value: _selectedCategoryId,
+            decoration: const InputDecoration(
+              labelText: 'Category',
+              prefixIcon: Icon(Icons.category_outlined),
+            ),
+            items: [
+              const DropdownMenuItem<String>(
+                value: null,
+                child: Text('All Categories'),
+              ),
+              ...productController.categories
+                  .where((c) => c.isActive)
+                  .map(
+                    (c) => DropdownMenuItem<String>(
+                      value: c.id,
+                      child: Text(c.name),
+                    ),
+                  ),
+            ],
+            onChanged: (value) {
+              setState(() => _selectedCategoryId = value);
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Brand filter
+        Obx(
+          () => DropdownButtonFormField<String>(
+            value: _selectedBrandId,
+            decoration: const InputDecoration(
+              labelText: 'Brand',
+              prefixIcon: Icon(Icons.branding_watermark_outlined),
+            ),
+            items: [
+              const DropdownMenuItem<String>(
+                value: null,
+                child: Text('All Brands'),
+              ),
+              ...productController.brands
+                  .where((b) => b.isActive)
+                  .map(
+                    (b) => DropdownMenuItem<String>(
+                      value: b.id,
+                      child: Text(b.name),
+                    ),
+                  ),
+            ],
+            onChanged: (value) {
+              setState(() => _selectedBrandId = value);
+            },
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Status filter
+        DropdownButtonFormField<String>(
+          value: _statusFilter,
+          decoration: const InputDecoration(
+            labelText: 'Status',
+            prefixIcon: Icon(Icons.toggle_on_outlined),
+          ),
+          items: const [
+            DropdownMenuItem(value: 'all', child: Text('All')),
+            DropdownMenuItem(value: 'active', child: Text('Active')),
+            DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
+          ],
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _statusFilter = value);
+            }
+          },
+        ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 
