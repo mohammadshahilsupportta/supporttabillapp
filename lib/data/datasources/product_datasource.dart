@@ -119,6 +119,28 @@ class ProductDataSource {
     }
   }
 
+  // Toggle product active status
+  Future<Product> toggleProductActive(
+    String productId,
+    bool isActive,
+  ) async {
+    try {
+      final data = await _supabase
+          .from('products')
+          .update({
+            'is_active': isActive,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', productId)
+          .select('*, category:categories(*), brand:brands(*)')
+          .single();
+
+      return Product.fromJson(data);
+    } catch (e) {
+      throw Exception('Failed to toggle product status: ${e.toString()}');
+    }
+  }
+
   // Search products
   Future<List<Product>> searchProducts(String tenantId, String query) async {
     try {

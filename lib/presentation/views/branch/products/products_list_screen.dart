@@ -128,181 +128,148 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16),
-                  leading: Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: theme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Icon(
-                      Icons.shopping_bag_outlined,
-                      color: theme.primaryColor,
-                    ),
-                  ),
-                  title: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          product.name,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: product.isActive
-                              ? Colors.green.withValues(alpha: 0.1)
-                              : Colors.grey.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          product.isActive ? 'Active' : 'Inactive',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: product.isActive
-                                ? Colors.green
-                                : Colors.grey,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  subtitle: Column(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 4),
-                      // SKU + Category / Brand row
+                      // Header row with product name and active/inactive switch
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (product.sku != null &&
-                              (product.sku ?? '').isNotEmpty) ...[
-                            Icon(
-                              Icons.qr_code_2,
-                              size: 14,
-                              color: Colors.grey.shade600,
+                          // Product icon
+                          Container(
+                            width: 50,
+                            height: 50,
+                            decoration: BoxDecoration(
+                              color: theme.primaryColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                            const SizedBox(width: 4),
-                            Flexible(
-                              child: Text(
-                                product.sku!,
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  fontFamily: 'monospace',
-                                  color: Colors.grey.shade700,
-                                ),
-                                overflow: TextOverflow.ellipsis,
+                            child: Icon(
+                              Icons.shopping_bag_outlined,
+                              color: theme.primaryColor,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          // Product name
+                          Expanded(
+                            child: Text(
+                              product.name,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                fontWeight: FontWeight.w600,
                               ),
-                            ),
-                          ],
-                          if (product.category != null ||
-                              product.brand != null) ...[
-                            if (product.sku != null &&
-                                (product.sku ?? '').isNotEmpty)
-                              const SizedBox(width: 12),
-                            Flexible(
-                              child: Text(
-                                [
-                                  if (product.category != null)
-                                    product.category!.name,
-                                  if (product.brand != null)
-                                    product.brand!.name,
-                                ].join(' • '),
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey.shade700,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text(
-                            '₹${product.sellingPrice.toStringAsFixed(2)}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.green,
-                              fontWeight: FontWeight.w600,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 8),
-                          Text(
-                            '• ${product.unit}',
-                            style: theme.textTheme.bodySmall,
+                          // Active/Inactive Toggle Switch at top right
+                          FutureBuilder<int>(
+                            future: stockController.getProductStockQuantity(
+                              product.id,
+                            ),
+                            builder: (context, stockSnapshot) {
+                              final stock = stockSnapshot.data ?? 0;
+                              final canActivate = stock > 0 || product.isActive;
+
+                              return Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Switch(
+                                    value: product.isActive,
+                                    onChanged: canActivate
+                                        ? (bool newValue) async {
+                                            await productController
+                                                .toggleProductActive(
+                                                  product.id,
+                                                  newValue,
+                                                  currentStock: stock,
+                                                );
+                                          }
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    product.isActive ? 'Active' : 'Inactive',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: product.isActive
+                                          ? Colors.green
+                                          : Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
-                          if (product.gstRate > 0) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.orange.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                'GST ${product.gstRate}%',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.orange,
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      // Product details
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          // SKU + Category / Brand row
+                          Row(
+                            children: [
+                              if (product.sku != null &&
+                                  (product.sku ?? '').isNotEmpty) ...[
+                                Icon(
+                                  Icons.qr_code_2,
+                                  size: 14,
+                                  color: Colors.grey.shade600,
+                                ),
+                                const SizedBox(width: 4),
+                                Flexible(
+                                  child: Text(
+                                    product.sku!,
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      fontFamily: 'monospace',
+                                      color: Colors.grey.shade700,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                              if (product.category != null ||
+                                  product.brand != null) ...[
+                                if (product.sku != null &&
+                                    (product.sku ?? '').isNotEmpty)
+                                  const SizedBox(width: 12),
+                                Flexible(
+                                  child: Text(
+                                    [
+                                      if (product.category != null)
+                                        product.category!.name,
+                                      if (product.brand != null)
+                                        product.brand!.name,
+                                    ].join(' • '),
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey.shade700,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Text(
+                                '₹${product.sellingPrice.toStringAsFixed(2)}',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: Colors.green,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      // Show stock quantity
-                      FutureBuilder<int>(
-                        future: stockController.getProductStockQuantity(
-                          product.id,
-                        ),
-                        builder: (context, snapshot) {
-                          final stock = snapshot.data ?? 0;
-                          final isLowStock =
-                              product.minStock > 0 && stock <= product.minStock;
-                          final isSoldOut = stock == 0;
-
-                          return Row(
-                            children: [
-                              Icon(
-                                isSoldOut
-                                    ? Icons.report_gmailerrorred_outlined
-                                    : Icons.inventory_outlined,
-                                size: 14,
-                                color: isSoldOut
-                                    ? Colors.red
-                                    : isLowStock
-                                    ? Colors.orange
-                                    : Colors.grey,
-                              ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 8),
                               Text(
-                                'Stock: $stock ${product.unit}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: isSoldOut
-                                      ? Colors.red
-                                      : isLowStock
-                                      ? Colors.orange
-                                      : null,
-                                  fontWeight: (isLowStock || isSoldOut)
-                                      ? FontWeight.w600
-                                      : null,
-                                ),
+                                '• ${product.unit}',
+                                style: theme.textTheme.bodySmall,
                               ),
-                              if (isLowStock && !isSoldOut) ...[
+                              if (product.gstRate > 0) ...[
                                 const SizedBox(width: 8),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
@@ -314,7 +281,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
-                                    'Low Stock',
+                                    'GST ${product.gstRate}%',
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: Colors.orange,
                                       fontWeight: FontWeight.w600,
@@ -322,62 +289,148 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                   ),
                                 ),
                               ],
-                              if (isSoldOut) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          // Show stock quantity
+                          FutureBuilder<int>(
+                            future: stockController.getProductStockQuantity(
+                              product.id,
+                            ),
+                            builder: (context, snapshot) {
+                              final stock = snapshot.data ?? 0;
+                              final isLowStock =
+                                  product.minStock > 0 &&
+                                  stock <= product.minStock;
+                              final isSoldOut = stock == 0;
+
+                              return Row(
+                                children: [
+                                  Icon(
+                                    isSoldOut
+                                        ? Icons.report_gmailerrorred_outlined
+                                        : Icons.inventory_outlined,
+                                    size: 14,
+                                    color: isSoldOut
+                                        ? Colors.red
+                                        : isLowStock
+                                        ? Colors.orange
+                                        : Colors.grey,
                                   ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    'Sold Out',
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Stock: $stock ${product.unit}',
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                      color: Colors.red,
-                                      fontWeight: FontWeight.w600,
+                                      color: isSoldOut
+                                          ? Colors.red
+                                          : isLowStock
+                                          ? Colors.orange
+                                          : null,
+                                      fontWeight: (isLowStock || isSoldOut)
+                                          ? FontWeight.w600
+                                          : null,
                                     ),
                                   ),
-                                ),
-                              ],
+                                  if (isLowStock && !isSoldOut) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'Low Stock',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: Colors.orange,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                  if (isSoldOut) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.red.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'Sold Out',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                              color: Colors.red,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              );
+                            },
+                          ),
+                          // Actions row
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              PopupMenuButton(
+                                itemBuilder: (context) => [
+                                  const PopupMenuItem(
+                                    value: 'view',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.visibility_outlined,
+                                          size: 20,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text('View Details'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem(
+                                    value: 'stock',
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          Icons.inventory_outlined,
+                                          size: 20,
+                                        ),
+                                        SizedBox(width: 8),
+                                        Text('Manage Stock'),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                onSelected: (value) {
+                                  if (value == 'view') {
+                                    _showProductDetails(context, product);
+                                  } else if (value == 'stock') {
+                                    Get.toNamed(
+                                      '/branch/stock',
+                                      arguments: product.id,
+                                    );
+                                  }
+                                },
+                              ),
                             ],
-                          );
-                        },
+                          ),
+                        ],
                       ),
                     ],
-                  ),
-                  trailing: PopupMenuButton(
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'view',
-                        child: Row(
-                          children: [
-                            Icon(Icons.visibility_outlined, size: 20),
-                            SizedBox(width: 8),
-                            Text('View Details'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'stock',
-                        child: Row(
-                          children: [
-                            Icon(Icons.inventory_outlined, size: 20),
-                            SizedBox(width: 8),
-                            Text('Manage Stock'),
-                          ],
-                        ),
-                      ),
-                    ],
-                    onSelected: (value) {
-                      if (value == 'view') {
-                        _showProductDetails(context, product);
-                      } else if (value == 'stock') {
-                        Get.toNamed('/branch/stock', arguments: product.id);
-                      }
-                    },
                   ),
                 ),
               );

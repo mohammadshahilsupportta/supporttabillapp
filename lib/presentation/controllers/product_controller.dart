@@ -300,6 +300,45 @@ class ProductController extends GetxController {
     }
   }
 
+  // Toggle product active status
+  Future<bool> toggleProductActive(
+    String productId,
+    bool newStatus, {
+    int? currentStock,
+  }) async {
+    try {
+      // Prevent activating product with zero stock (matching website logic)
+      if (newStatus && (currentStock ?? 0) == 0) {
+        Get.snackbar(
+          'Error',
+          'Cannot activate product with zero stock. Please add stock first.',
+          snackPosition: SnackPosition.TOP,
+        );
+        return false;
+      }
+
+      await _dataSource.toggleProductActive(productId, newStatus);
+
+      Get.snackbar(
+        'Success',
+        'Product status updated successfully',
+        snackPosition: SnackPosition.TOP,
+      );
+
+      // Reload products
+      await loadProducts();
+
+      return true;
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to update product status: ${e.toString()}',
+        snackPosition: SnackPosition.TOP,
+      );
+      return false;
+    }
+  }
+
   // Create category
   Future<bool> createCategory(
     String name, {
