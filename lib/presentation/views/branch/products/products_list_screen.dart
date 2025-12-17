@@ -22,6 +22,13 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
   String _statusFilter = 'all'; // all | active | inactive
 
   @override
+  void initState() {
+    super.initState();
+    // Ensure stock is loaded for statistics
+    stockController.loadCurrentStock();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
@@ -64,10 +71,15 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
           // There are products, but current search/filters returned zero.
           // Keep user on same screen with filters and a simple message.
           return RefreshIndicator(
-            onRefresh: () => productController.loadProducts(),
+            onRefresh: () async {
+              await productController.loadProducts();
+              await stockController.loadCurrentStock();
+            },
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                _buildStatisticsCards(context, theme),
+                const SizedBox(height: 12),
                 _buildFilterBar(context, theme),
                 const SizedBox(height: 24),
                 Center(
@@ -93,15 +105,27 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
         }
 
         return RefreshIndicator(
-          onRefresh: () => productController.loadProducts(),
+          onRefresh: () async {
+            await productController.loadProducts();
+            await stockController.loadCurrentStock();
+          },
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: filtered.length + 1,
+            itemCount: filtered.length + 2, // +1 for filter bar, +1 for stats
             itemBuilder: (context, index) {
               if (index == 0) {
-                return _buildFilterBar(context, theme);
+                return _buildStatisticsCards(context, theme);
               }
-              final product = filtered[index - 1];
+              if (index == 1) {
+                return Column(
+                  children: [
+                    const SizedBox(height: 12),
+                    _buildFilterBar(context, theme),
+                    const SizedBox(height: 12),
+                  ],
+                );
+              }
+              final product = filtered[index - 2];
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -372,6 +396,169 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
     );
   }
 
+  /// Calculate product statistics
+  Map<String, int> _calculateStatistics() {
+    final allProducts = productController.products;
+    final stockMap = <String, int>{};
+
+    // Create a map of productId -> quantity from current stock
+    for (final stock in stockController.currentStock) {
+      stockMap[stock.productId] = stock.quantity;
+    }
+
+    int totalProducts = allProducts.length;
+    int activeProducts = allProducts.where((p) => p.isActive).length;
+    int lowStockProducts = 0;
+    int soldOutProducts = 0;
+
+    for (final product in allProducts) {
+      final quantity = stockMap[product.id] ?? 0;
+
+      if (quantity == 0) {
+        soldOutProducts++;
+      } else if (product.minStock > 0 && quantity <= product.minStock) {
+        lowStockProducts++;
+      }
+    }
+
+    return {
+      'total': totalProducts,
+      'active': activeProducts,
+      'lowStock': lowStockProducts,
+      'soldOut': soldOutProducts,
+    };
+  }
+
+  /// Build compact statistics cards in horizontal scrollable row
+  Widget _buildStatisticsCards(BuildContext context, ThemeData theme) {
+    return Obx(() {
+      final stats = _calculateStatistics();
+
+      return SizedBox(
+        height: 80,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          children: [
+            const SizedBox(width: 4),
+            // Total Products
+            _buildCompactStatCard(
+              context: context,
+              theme: theme,
+              title: 'Total',
+              value: stats['total']!.toString(),
+              borderColor: Colors.blue,
+              icon: Icons.inventory_2_outlined,
+            ),
+            const SizedBox(width: 8),
+            // Active Products
+            _buildCompactStatCard(
+              context: context,
+              theme: theme,
+              title: 'Active',
+              value: stats['active']!.toString(),
+              borderColor: Colors.green,
+              icon: Icons.check_circle_outline,
+              valueColor: Colors.green,
+            ),
+            const SizedBox(width: 8),
+            // Low Stock
+            _buildCompactStatCard(
+              context: context,
+              theme: theme,
+              title: 'Low Stock',
+              value: stats['lowStock']!.toString(),
+              borderColor: stats['lowStock']! > 0
+                  ? Colors.orange
+                  : Colors.orange.shade300,
+              icon: Icons.warning_amber_rounded,
+              valueColor: Colors.orange,
+              highlightBackground: stats['lowStock']! > 0,
+            ),
+            const SizedBox(width: 8),
+            // Sold Out
+            _buildCompactStatCard(
+              context: context,
+              theme: theme,
+              title: 'Sold Out',
+              value: stats['soldOut']!.toString(),
+              borderColor: stats['soldOut']! > 0
+                  ? Colors.red
+                  : Colors.red.shade300,
+              icon: Icons.cancel_outlined,
+              valueColor: Colors.red,
+              highlightBackground: stats['soldOut']! > 0,
+            ),
+            const SizedBox(width: 4),
+          ],
+        ),
+      );
+    });
+  }
+
+  /// Build compact horizontal statistic card
+  Widget _buildCompactStatCard({
+    required BuildContext context,
+    required ThemeData theme,
+    required String title,
+    required String value,
+    required Color borderColor,
+    required IconData icon,
+    Color? valueColor,
+    bool highlightBackground = false,
+  }) {
+    return Container(
+      width: 110,
+      decoration: BoxDecoration(
+        color: highlightBackground
+            ? borderColor.withValues(alpha: 0.08)
+            : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: borderColor.withValues(alpha: 0.5),
+          width: 1.5,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, size: 14, color: borderColor),
+                const SizedBox(width: 4),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.grey.shade700,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: valueColor ?? theme.textTheme.titleLarge?.color,
+                fontSize: 18,
+                height: 1.1,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   /// Apply search + category/brand/status filters to controller.products.
   List<dynamic> _getFilteredProducts() {
     final all = productController.products;
@@ -408,102 +595,242 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
     }).toList();
   }
 
-  /// Build the always-visible search + filter bar at the top, matching website UX.
+  /// Build compact search + filter bar in single row
   Widget _buildFilterBar(BuildContext context, ThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Search field (backend search)
-        TextField(
-          decoration: const InputDecoration(
-            hintText: 'Search products by name, SKU or description...',
-            prefixIcon: Icon(Icons.search),
-          ),
-          onChanged: (value) {
-            setState(() => _searchQuery = value);
-            productController.searchProducts(value);
-          },
-        ),
-        const SizedBox(height: 12),
-
-        // Category filter
-        Obx(
-          () => DropdownButtonFormField<String>(
-            value: _selectedCategoryId,
-            decoration: const InputDecoration(
-              labelText: 'Category',
-              prefixIcon: Icon(Icons.category_outlined),
-            ),
-            items: [
-              const DropdownMenuItem<String>(
-                value: null,
-                child: Text('All Categories'),
+    return Card(
+      elevation: 1,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            // Search field (backend search) - full width
+            TextField(
+              decoration: InputDecoration(
+                hintText: 'Search products...',
+                prefixIcon: const Icon(Icons.search, size: 20),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey.shade300),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
               ),
-              ...productController.categories
-                  .where((c) => c.isActive)
-                  .map(
-                    (c) => DropdownMenuItem<String>(
-                      value: c.id,
-                      child: Text(c.name),
+              style: theme.textTheme.bodyMedium,
+              onChanged: (value) {
+                setState(() => _searchQuery = value);
+                productController.searchProducts(value);
+              },
+            ),
+            const SizedBox(height: 10),
+            // Filters in single row
+            Row(
+              children: [
+                // Category filter - compact
+                Expanded(
+                  child: Obx(
+                    () => Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.grey.shade50,
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedCategoryId,
+                          isDense: true,
+                          isExpanded: true,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                          icon: const Icon(Icons.arrow_drop_down, size: 18),
+                          hint: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.category_outlined,
+                                size: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  'Category',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('All Categories'),
+                            ),
+                            ...productController.categories
+                                .where((c) => c.isActive)
+                                .map(
+                                  (c) => DropdownMenuItem<String>(
+                                    value: c.id,
+                                    child: Text(
+                                      c.name,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                          ],
+                          onChanged: (value) {
+                            setState(() => _selectedCategoryId = value);
+                          },
+                        ),
+                      ),
                     ),
                   ),
-            ],
-            onChanged: (value) {
-              setState(() => _selectedCategoryId = value);
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        // Brand filter
-        Obx(
-          () => DropdownButtonFormField<String>(
-            value: _selectedBrandId,
-            decoration: const InputDecoration(
-              labelText: 'Brand',
-              prefixIcon: Icon(Icons.branding_watermark_outlined),
-            ),
-            items: [
-              const DropdownMenuItem<String>(
-                value: null,
-                child: Text('All Brands'),
-              ),
-              ...productController.brands
-                  .where((b) => b.isActive)
-                  .map(
-                    (b) => DropdownMenuItem<String>(
-                      value: b.id,
-                      child: Text(b.name),
+                ),
+                const SizedBox(width: 6),
+                // Brand filter - compact
+                Expanded(
+                  child: Obx(
+                    () => Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(10),
+                        color: Colors.grey.shade50,
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedBrandId,
+                          isDense: true,
+                          isExpanded: true,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
+                          ),
+                          icon: const Icon(Icons.arrow_drop_down, size: 18),
+                          hint: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.branding_watermark_outlined,
+                                size: 14,
+                                color: Colors.grey.shade600,
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  'Brand',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 12,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('All Brands'),
+                            ),
+                            ...productController.brands
+                                .where((b) => b.isActive)
+                                .map(
+                                  (b) => DropdownMenuItem<String>(
+                                    value: b.id,
+                                    child: Text(
+                                      b.name,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ),
+                          ],
+                          onChanged: (value) {
+                            setState(() => _selectedBrandId = value);
+                          },
+                        ),
+                      ),
                     ),
                   ),
-            ],
-            onChanged: (value) {
-              setState(() => _selectedBrandId = value);
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-
-        // Status filter
-        DropdownButtonFormField<String>(
-          value: _statusFilter,
-          decoration: const InputDecoration(
-            labelText: 'Status',
-            prefixIcon: Icon(Icons.toggle_on_outlined),
-          ),
-          items: const [
-            DropdownMenuItem(value: 'all', child: Text('All')),
-            DropdownMenuItem(value: 'active', child: Text('Active')),
-            DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
+                ),
+                const SizedBox(width: 6),
+                // Status filter - compact
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(10),
+                      color: Colors.grey.shade50,
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _statusFilter,
+                        isDense: true,
+                        isExpanded: true,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 8,
+                        ),
+                        icon: const Icon(Icons.arrow_drop_down, size: 18),
+                        hint: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.toggle_on_outlined,
+                              size: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                            const SizedBox(width: 4),
+                            Flexible(
+                              child: Text(
+                                'Status',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 12,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        items: const [
+                          DropdownMenuItem(value: 'all', child: Text('All')),
+                          DropdownMenuItem(
+                            value: 'active',
+                            child: Text('Active'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'inactive',
+                            child: Text('Inactive'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() => _statusFilter = value);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
-          onChanged: (value) {
-            if (value != null) {
-              setState(() => _statusFilter = value);
-            }
-          },
         ),
-        const SizedBox(height: 16),
-      ],
+      ),
     );
   }
 
