@@ -1,25 +1,79 @@
 import '../../core/services/supabase_service.dart';
+import '../models/product_model.dart';
 import '../models/stock_model.dart';
 
 class StockDataSource {
   final SupabaseService _supabase = SupabaseService.instance;
 
-  // Get current stock for a branch
+  // Get current stock for a branch (matches website: shows all active products)
   Future<List<CurrentStock>> getCurrentStockByBranch(String branchId) async {
     try {
-      final data = await _supabase
-          .from('current_stock')
-          .select('*')
-          .eq('branch_id', branchId)
-          .order('updated_at', ascending: false);
+      // Get branch to get tenant_id
+      final branchData = await _supabase
+          .from('branches')
+          .select('tenant_id')
+          .eq('id', branchId)
+          .single();
 
-      return (data as List).map((json) => CurrentStock.fromJson(json)).toList();
+      final tenantId = branchData['tenant_id'] as String;
+
+      // Get all active products for this tenant
+      final productsData = await _supabase
+          .from('products')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .order('name', ascending: true);
+
+      // Get current stock entries for this branch
+      final stockData = await _supabase
+          .from('current_stock')
+          .select('*, product:products(*)')
+          .eq('branch_id', branchId);
+
+      final products = (productsData as List);
+      final stockEntries = (stockData as List);
+
+      // Create a map of product_id -> stock entry
+      final stockMap = <String, Map<String, dynamic>>{};
+      for (var entry in stockEntries) {
+        final productId = entry['product_id'] as String;
+        stockMap[productId] = entry;
+      }
+
+      // Combine products with stock data
+      final result = <CurrentStock>[];
+      for (var product in products) {
+        final productId = product['id'] as String;
+        final stockEntry = stockMap[productId];
+
+        if (stockEntry != null) {
+          // Product has stock entry - use it
+          result.add(CurrentStock.fromJson(stockEntry));
+        } else {
+          // Product doesn't have stock entry - create one with quantity 0
+          result.add(CurrentStock(
+            id: '', // No stock entry ID
+            tenantId: tenantId,
+            branchId: branchId,
+            productId: productId,
+            quantity: 0,
+            updatedAt: DateTime.parse(product['created_at'] as String),
+            product: Product.fromJson(product),
+          ));
+        }
+      }
+
+      // Sort by updated_at descending (most recently updated first)
+      result.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+      return result;
     } catch (e) {
       throw Exception('Failed to fetch current stock: ${e.toString()}');
     }
   }
 
-  // Get current stock for all branches in a tenant
+  // Get current stock for all branches in a tenant (matches website: shows all active products)
   Future<List<CurrentStock>> getCurrentStockByTenant(String tenantId) async {
     try {
       // Get all branches for this tenant first
@@ -35,13 +89,61 @@ class StockDataSource {
 
       final branchIds = branchesData.map((b) => b['id'] as String).toList();
 
-      final data = await _supabase
-          .from('current_stock')
+      // Get all active products for this tenant
+      final productsData = await _supabase
+          .from('products')
           .select('*')
-          .inFilter('branch_id', branchIds)
-          .order('updated_at', ascending: false);
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true)
+          .order('name', ascending: true);
 
-      return (data as List).map((json) => CurrentStock.fromJson(json)).toList();
+      // Get current stock entries for all branches
+      final stockData = await _supabase
+          .from('current_stock')
+          .select('*, product:products(*)')
+          .inFilter('branch_id', branchIds);
+
+      final products = (productsData as List);
+      final stockEntries = (stockData as List);
+
+      // Create a map of (branch_id, product_id) -> stock entry
+      final stockMap = <String, Map<String, dynamic>>{};
+      for (var entry in stockEntries) {
+        final branchId = entry['branch_id'] as String;
+        final productId = entry['product_id'] as String;
+        stockMap['$branchId:$productId'] = entry;
+      }
+
+      // Combine products with stock data for each branch
+      final result = <CurrentStock>[];
+      for (var branchId in branchIds) {
+        for (var product in products) {
+          final productId = product['id'] as String;
+          final key = '$branchId:$productId';
+          final stockEntry = stockMap[key];
+
+          if (stockEntry != null) {
+            // Product has stock entry for this branch - use it
+            result.add(CurrentStock.fromJson(stockEntry));
+          } else {
+            // Product doesn't have stock entry for this branch - create one with quantity 0
+            result.add(CurrentStock(
+              id: '', // No stock entry ID
+              tenantId: tenantId,
+              branchId: branchId,
+              productId: productId,
+              quantity: 0,
+              updatedAt: DateTime.parse(product['created_at'] as String),
+              product: Product.fromJson(product),
+            ));
+          }
+        }
+      }
+
+      // Sort by updated_at descending (most recently updated first)
+      result.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+
+      return result;
     } catch (e) {
       throw Exception('Failed to fetch tenant stock: ${e.toString()}');
     }

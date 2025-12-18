@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../data/datasources/billing_datasource.dart';
@@ -227,6 +228,64 @@ class BillingController extends GetxController {
       return true;
     } catch (e) {
       Get.snackbar('Error', 'Failed to create bill: ${e.toString()}');
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  // Create bill with full control (for create order screen)
+  Future<bool> createBillWithItems({
+    required String branchId,
+    required List<BillItem> items,
+    String? customerId,
+    String? customerName,
+    String? customerPhone,
+    required double subtotal,
+    required double gstAmount,
+    required double discount,
+    required double totalAmount,
+    required double profitAmount,
+    double? paidAmount,
+    required PaymentMode paymentMode,
+  }) async {
+    if (items.isEmpty) {
+      Get.snackbar('Error', 'Cart is empty');
+      return false;
+    }
+
+    try {
+      isLoading.value = true;
+
+      await _dataSource.createBill(
+        branchId: branchId,
+        items: items,
+        customerId: customerId,
+        customerName: customerName,
+        customerPhone: customerPhone,
+        subtotal: subtotal,
+        gstAmount: gstAmount,
+        discount: discount,
+        totalAmount: totalAmount,
+        profitAmount: profitAmount,
+        paidAmount: paidAmount,
+        paymentMode: paymentMode,
+      );
+
+      Get.snackbar(
+        'Success',
+        'Order created successfully!',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+
+      // Reload bills
+      await loadBills();
+
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to create order: ${e.toString()}');
       return false;
     } finally {
       isLoading.value = false;

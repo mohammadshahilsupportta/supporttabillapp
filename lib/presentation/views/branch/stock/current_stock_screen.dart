@@ -100,7 +100,10 @@ class CurrentStockScreen extends StatelessWidget {
                   itemCount: controller.currentStock.length,
                   itemBuilder: (context, index) {
                     final stock = controller.currentStock[index];
-                    final isLowStock = stock.quantity < 10;
+                    final product = stock.product;
+                    final minStock = product?.minStock ?? 0;
+                    final isLowStock = stock.quantity > 0 && minStock > 0 && stock.quantity <= minStock;
+                    final isSoldOut = stock.quantity == 0;
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 12),
@@ -108,18 +111,24 @@ class CurrentStockScreen extends StatelessWidget {
                         leading: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: isLowStock
-                                ? Colors.red.withValues(alpha: 0.1)
-                                : Colors.green.withValues(alpha: 0.1),
+                            color: isSoldOut
+                                ? Colors.grey.withValues(alpha: 0.1)
+                                : isLowStock
+                                    ? Colors.red.withValues(alpha: 0.1)
+                                    : Colors.green.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Icon(
                             Icons.inventory_2,
-                            color: isLowStock ? Colors.red : Colors.green,
+                            color: isSoldOut
+                                ? Colors.grey
+                                : isLowStock
+                                    ? Colors.red
+                                    : Colors.green,
                           ),
                         ),
                         title: Text(
-                          'Product ID: ${stock.productId}',
+                          product?.name ?? 'Product ID: ${stock.productId}',
                           style: theme.textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -127,16 +136,53 @@ class CurrentStockScreen extends StatelessWidget {
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            if (product != null) ...[
+                              if (product.sku != null)
+                                Text(
+                                  'SKU: ${product.sku}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              Text(
+                                'Unit: ${product.unit}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 4),
                             Text(
                               'Updated: ${stock.updatedAt.toString().split(' ')[0]}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey.shade600,
+                              ),
                             ),
-                            if (isLowStock)
-                              Text(
-                                'Low Stock Alert!',
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontWeight: FontWeight.w600,
+                            if (isSoldOut)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  'Sold Out',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              )
+                            else if (isLowStock)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Text(
+                                  'Low Stock Alert!',
+                                  style: TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 12,
+                                  ),
                                 ),
                               ),
                           ],
@@ -149,10 +195,17 @@ class CurrentStockScreen extends StatelessWidget {
                               '${stock.quantity}',
                               style: theme.textTheme.headlineSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                color: isLowStock ? Colors.red : Colors.green,
+                                color: isSoldOut
+                                    ? Colors.grey
+                                    : isLowStock
+                                        ? Colors.red
+                                        : Colors.green,
                               ),
                             ),
-                            Text('in stock', style: theme.textTheme.bodySmall),
+                            Text(
+                              isSoldOut ? 'sold out' : 'in stock',
+                              style: theme.textTheme.bodySmall,
+                            ),
                           ],
                         ),
                         onTap: () {
@@ -232,7 +285,7 @@ class CurrentStockScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Product: ${stock.productId}',
+              stock.product?.name ?? 'Product: ${stock.productId}',
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
@@ -353,3 +406,4 @@ class CurrentStockScreen extends StatelessWidget {
     );
   }
 }
+

@@ -1,3 +1,5 @@
+import 'product_model.dart';
+
 // Stock Transaction Type Enum
 enum StockTransactionType {
   stockIn('stock_in'),
@@ -111,6 +113,7 @@ class CurrentStock {
   final String productId;
   final int quantity;
   final DateTime updatedAt;
+  final Product? product; // Optional joined product data
 
   CurrentStock({
     required this.id,
@@ -119,9 +122,20 @@ class CurrentStock {
     required this.productId,
     required this.quantity,
     required this.updatedAt,
+    this.product,
   });
 
   factory CurrentStock.fromJson(Map<String, dynamic> json) {
+    Product? product;
+    if (json['product'] != null) {
+      try {
+        product = Product.fromJson(json['product'] as Map<String, dynamic>);
+      } catch (e) {
+        // If product parsing fails, leave it as null
+        print('Error parsing product in CurrentStock: $e');
+      }
+    }
+
     return CurrentStock(
       id: json['id'] as String,
       tenantId: json['tenant_id'] as String,
@@ -129,6 +143,7 @@ class CurrentStock {
       productId: json['product_id'] as String,
       quantity: json['quantity'] as int,
       updatedAt: DateTime.parse(json['updated_at'] as String),
+      product: product,
     );
   }
 
@@ -140,6 +155,7 @@ class CurrentStock {
       'product_id': productId,
       'quantity': quantity,
       'updated_at': updatedAt.toIso8601String(),
+      if (product != null) 'product': product!.toJson(),
     };
   }
 }
