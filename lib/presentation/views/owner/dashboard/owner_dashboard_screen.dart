@@ -1076,134 +1076,31 @@ class _BranchesTabState extends State<_BranchesTab> {
         final isActive = branch['is_active'] == true;
         final isMain = branch['is_main'] == true;
 
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header with name and icon
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(Icons.store, size: 20, color: theme.primaryColor),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        branch['name'] ?? 'Unknown',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                // Status badges
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    // Active/Inactive badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? Colors.green.withValues(alpha: 0.1)
-                            : Colors.grey.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            isActive ? Icons.check_circle : Icons.cancel,
-                            size: 12,
-                            color: isActive ? Colors.green : Colors.grey,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            isActive ? 'Active' : 'Inactive',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              color: isActive ? Colors.green : Colors.grey,
-                              fontSize: 10,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Main branch badge
-                    if (isMain)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Main Branch',
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.orange,
-                            fontSize: 10,
-                          ),
-                        ),
-                      ),
-                    // Code badge
-                    if (branch['code'] != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          branch['code'],
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: Colors.blue,
-                            fontSize: 10,
-                            fontFamily: 'monospace',
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                // Address and phone
-                if (branch['address'] != null) ...[
-                  const SizedBox(height: 3),
+        return InkWell(
+          onTap: () => Get.toNamed(AppRoutes.branchDetails, arguments: branch),
+          borderRadius: BorderRadius.circular(12),
+          child: Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with name and icon
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(
-                        Icons.location_on,
-                        size: 14,
-                        color: Colors.grey.shade600,
-                      ),
-                      const SizedBox(width: 4),
+                      Icon(Icons.store, size: 20, color: theme.primaryColor),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          branch['address'],
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade700,
-                            fontSize: 11,
+                          branch['name'] ?? 'Unknown',
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.bold,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -1211,127 +1108,139 @@ class _BranchesTabState extends State<_BranchesTab> {
                       ),
                     ],
                   ),
-                ],
-                if (branch['phone'] != null) ...[
-                  const SizedBox(height: 3),
-                  Row(
+                  const SizedBox(height: 6),
+                  // Status badges
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
                     children: [
-                      Icon(Icons.phone, size: 14, color: Colors.grey.shade600),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          branch['phone'],
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: Colors.grey.shade700,
-                            fontSize: 11,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                      // Active/Inactive badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? Colors.green.withValues(alpha: 0.1)
+                              : Colors.grey.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isActive ? Icons.check_circle : Icons.cancel,
+                              size: 12,
+                              color: isActive ? Colors.green : Colors.grey,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isActive ? 'Active' : 'Inactive',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                color: isActive ? Colors.green : Colors.grey,
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      // Main branch badge
+                      if (isMain)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            'Main Branch',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.orange,
+                              fontSize: 10,
+                            ),
+                          ),
+                        ),
+                      // Code badge
+                      if (branch['code'] != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            branch['code'],
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: Colors.blue,
+                              fontSize: 10,
+                              fontFamily: 'monospace',
+                            ),
+                          ),
+                        ),
                     ],
                   ),
-                ],
-                // Action buttons (always visible)
-                const SizedBox(height: 6),
-                const Divider(height: 1),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    // View button
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showBranchDetails(context, branch),
-                        icon: const Icon(Icons.visibility_outlined, size: 16),
-                        label: const Text('View'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                  // Address and phone
+                  if (branch['address'] != null) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Icon(
+                          Icons.location_on,
+                          size: 14,
+                          color: Colors.grey.shade600,
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Edit button
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          Get.snackbar(
-                            'Coming Soon',
-                            'Edit branch feature will be available soon',
-                            snackPosition: SnackPosition.TOP,
-                          );
-                        },
-                        icon: const Icon(Icons.edit_outlined, size: 16),
-                        label: const Text('Edit'),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            branch['address'],
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.grey.shade700,
+                              fontSize: 11,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    // Delete button
-                    IconButton(
-                      onPressed: isMain
-                          ? null
-                          : () {
-                              // Show delete confirmation
-                              showDialog(
-                                context: context,
-                                builder: (context) => AlertDialog(
-                                  title: const Text('Delete Branch'),
-                                  content: Text(
-                                    'Are you sure you want to delete "${branch['name']}"? This action cannot be undone and will affect all associated data.',
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () => Navigator.pop(context),
-                                      child: const Text('Cancel'),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: () async {
-                                        Navigator.pop(context);
-                                        final success = await branchController
-                                            .deleteBranch(branch['id']);
-                                        if (success) {
-                                          Get.snackbar(
-                                            'Success',
-                                            'Branch deleted successfully',
-                                            snackPosition: SnackPosition.TOP,
-                                            backgroundColor: Colors.green,
-                                            colorText: Colors.white,
-                                          );
-                                        } else {
-                                          Get.snackbar(
-                                            'Error',
-                                            'Failed to delete branch',
-                                            snackPosition: SnackPosition.TOP,
-                                            backgroundColor: Colors.red,
-                                            colorText: Colors.white,
-                                          );
-                                        }
-                                      },
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      child: const Text('Delete'),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
-                      icon: const Icon(Icons.delete_outline, size: 20),
-                      color: Colors.red,
-                      tooltip: isMain
-                          ? 'Cannot delete main branch. Set another branch as main first.'
-                          : 'Delete branch',
-                      style: IconButton.styleFrom(
-                        backgroundColor: Colors.red.withValues(alpha: 0.1),
-                        padding: const EdgeInsets.all(8),
-                      ),
+                      ],
                     ),
                   ],
-                ),
-              ],
+                  if (branch['phone'] != null) ...[
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.phone,
+                          size: 14,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            branch['phone'],
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.grey.shade700,
+                              fontSize: 11,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         );
@@ -1354,108 +1263,6 @@ class _BranchesTabState extends State<_BranchesTab> {
           code.contains(query) ||
           address.contains(query);
     }).toList();
-  }
-
-  void _showBranchDetails(BuildContext context, Map<String, dynamic> branch) {
-    final theme = Theme.of(context);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (context, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.primaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.store,
-                      size: 32,
-                      color: theme.primaryColor,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          branch['name'] ?? 'Unknown',
-                          style: theme.textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        if (branch['code'] != null)
-                          Text(
-                            'Code: ${branch['code']}',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: Colors.grey,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              if (branch['address'] != null)
-                _buildDetailRow('Address', branch['address']),
-              if (branch['city'] != null || branch['state'] != null)
-                _buildDetailRow(
-                  'Location',
-                  '${branch['city'] ?? ''} ${branch['state'] ?? ''}'.trim(),
-                ),
-              if (branch['pincode'] != null)
-                _buildDetailRow('Pincode', branch['pincode']),
-              if (branch['phone'] != null)
-                _buildDetailRow('Phone', branch['phone']),
-              if (branch['email'] != null)
-                _buildDetailRow('Email', branch['email']),
-              _buildDetailRow(
-                'Status',
-                branch['is_active'] == true ? 'Active' : 'Inactive',
-              ),
-              if (branch['is_main'] == true)
-                _buildDetailRow('Type', 'Main Branch'),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Close'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildDetailRow(String label, String value) {

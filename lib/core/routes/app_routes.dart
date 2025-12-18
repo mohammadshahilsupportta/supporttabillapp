@@ -36,6 +36,7 @@ import '../../presentation/views/branch/stock/stock_transfer_screen.dart';
 import '../../presentation/views/common/settings/profile_edit_screen.dart';
 import '../../presentation/views/common/settings/settings_screen.dart';
 import '../../presentation/views/owner/branches/branches_list_screen.dart';
+import '../../presentation/views/owner/branches/branch_details_screen.dart';
 import '../../presentation/views/owner/branches/create_branch_screen.dart';
 import '../../presentation/views/owner/catalogue/brands_list_screen.dart';
 import '../../presentation/views/owner/catalogue/categories_list_screen.dart';
@@ -84,6 +85,7 @@ class AppRoutes {
   static const String ownerDashboard = '/owner/dashboard';
   static const String branchesList = '/owner/branches';
   static const String branchCreate = '/owner/branches/create';
+  static const String branchDetails = '/owner/branches/details';
   static const String productManagement = '/owner/products';
   static const String usersList = '/owner/users';
   static const String userCreate = '/owner/users/create';
@@ -142,9 +144,10 @@ class AppRoutes {
         Get.lazyPut<ProductController>(() => ProductController());
       }),
     ),
+    // Register more specific routes first
     GetPage(
-      name: branchesList,
-      page: () => const BranchesListScreen(),
+      name: branchDetails,
+      page: () => const BranchDetailsScreen(),
       binding: BindingsBuilder(() {
         Get.lazyPut<BranchController>(() => BranchController());
       }),
@@ -152,6 +155,13 @@ class AppRoutes {
     GetPage(
       name: branchCreate,
       page: () => const CreateBranchScreen(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut<BranchController>(() => BranchController());
+      }),
+    ),
+    GetPage(
+      name: branchesList,
+      page: () => const BranchesListScreen(),
       binding: BindingsBuilder(() {
         Get.lazyPut<BranchController>(() => BranchController());
       }),
