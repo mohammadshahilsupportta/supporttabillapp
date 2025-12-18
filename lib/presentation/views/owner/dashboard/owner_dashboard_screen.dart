@@ -29,7 +29,32 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(_getTitle()), elevation: 0),
+      appBar: AppBar(
+        title: Text(_getTitle()),
+        elevation: 0,
+        actions: [
+          if (_selectedIndex == 1)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: ElevatedButton.icon(
+                onPressed: () => Get.toNamed(AppRoutes.branchCreate),
+                icon: const Icon(Icons.add_business, size: 18),
+                label: const Text('Add Branch'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.primaryColor,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
       body: _screens[_selectedIndex],
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showQuickActionsSheet(context),
@@ -833,21 +858,6 @@ class _BranchesTabState extends State<_BranchesTab> {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
           children: [
-            // Add Branch button
-            Padding(
-              padding: const EdgeInsets.only(bottom: 12),
-              child: ElevatedButton.icon(
-                onPressed: () => Get.toNamed(AppRoutes.branchCreate),
-                icon: const Icon(Icons.add_business),
-                label: const Text('Add Branch'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-            ),
             // Search bar
             Card(
               elevation: 1,
