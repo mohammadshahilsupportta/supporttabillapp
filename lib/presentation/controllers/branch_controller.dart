@@ -39,10 +39,6 @@ class BranchController extends GetxController {
     required String code,
     String? address,
     String? phone,
-    String? email,
-    String? city,
-    String? state,
-    String? pincode,
   }) async {
     try {
       isLoading.value = true;
@@ -59,17 +55,14 @@ class BranchController extends GetxController {
         code: code,
         address: address,
         phone: phone,
-        email: email,
-        city: city,
-        state: state,
-        pincode: pincode,
       );
 
       await loadBranches();
       return true;
-    } catch (e) {
+    } on Exception catch (e) {
       print('[BranchController] Error creating branch: $e');
-      return false;
+      // Re-throw so UI can show specific error (e.g., duplicate code)
+      rethrow;
     } finally {
       isLoading.value = false;
     }

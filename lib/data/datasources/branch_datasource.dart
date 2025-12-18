@@ -46,10 +46,6 @@ class BranchDataSource {
     required String code,
     String? address,
     String? phone,
-    String? email,
-    String? city,
-    String? state,
-    String? pincode,
   }) async {
     try {
       final response = await _client
@@ -60,18 +56,23 @@ class BranchDataSource {
             'code': code,
             'address': address,
             'phone': phone,
-            'email': email,
-            'city': city,
-            'state': state,
-            'pincode': pincode,
             'is_active': true,
           })
           .select()
           .single();
 
       return response;
-    } catch (e) {
+    } on PostgrestException catch (e) {
       print('[BranchDataSource] Error creating branch: $e');
+      // Handle unique violation on branch code (same as website API)
+      if (e.code == '23505' ||
+          e.message.toLowerCase().contains('duplicate key') ||
+          e.message.toLowerCase().contains('code')) {
+        throw Exception('BRANCH_CODE_ALREADY_EXISTS');
+      }
+      rethrow;
+    } catch (e) {
+      print('[BranchDataSource] Error creating branch (unknown): $e');
       rethrow;
     }
   }
