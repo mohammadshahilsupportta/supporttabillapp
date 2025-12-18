@@ -135,22 +135,22 @@ class _BrandsListScreenState extends State<BrandsListScreen> {
             Expanded(
               child: filteredBrands.isEmpty
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.branding_watermark_outlined,
-                            size: 80,
-                            color: theme.primaryColor.withValues(alpha: 0.3),
-                          ),
-                          const SizedBox(height: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.branding_watermark_outlined,
+                  size: 80,
+                  color: theme.primaryColor.withValues(alpha: 0.3),
+                ),
+                const SizedBox(height: 24),
                           Text(
                             searchQuery.isEmpty
                                 ? 'No Brands Yet'
                                 : 'No Brands Found',
                             style: theme.textTheme.headlineMedium,
                           ),
-                          const SizedBox(height: 12),
+                const SizedBox(height: 12),
                           Text(
                             searchQuery.isEmpty
                                 ? 'Add your first brand'
@@ -160,19 +160,19 @@ class _BrandsListScreenState extends State<BrandsListScreen> {
                             ),
                           ),
                           if (searchQuery.isEmpty) ...[
-                            const SizedBox(height: 32),
-                            ElevatedButton.icon(
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
                               onPressed: () =>
                                   _showCreateBrandDialog(context, pc),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add Brand'),
-                            ),
-                          ],
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Brand'),
+                ),
+              ],
                         ],
-                      ),
+            ),
                     )
                   : RefreshIndicator(
-                      onRefresh: () => pc.loadBrands(),
+          onRefresh: () => pc.loadBrands(),
                       child: GridView.builder(
                         // Extra bottom padding so last card is not hidden by FAB
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
@@ -185,17 +185,17 @@ class _BrandsListScreenState extends State<BrandsListScreen> {
                               mainAxisSpacing: 16,
                             ),
                         itemCount: filteredBrands.length,
-                        itemBuilder: (context, index) {
+            itemBuilder: (context, index) {
                           final brand = filteredBrands[index];
-                          final productCount = pc.products
-                              .where((p) => p.brandId == brand.id)
-                              .length;
+              final productCount = pc.products
+                  .where((p) => p.brandId == brand.id)
+                  .length;
 
-                          return Card(
+              return Card(
                             elevation: 2,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
                               onTap: () =>
@@ -206,7 +206,7 @@ class _BrandsListScreenState extends State<BrandsListScreen> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
-                                      children: [
+                    children: [
                                         Container(
                                           padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
@@ -222,15 +222,15 @@ class _BrandsListScreenState extends State<BrandsListScreen> {
                                             color: Colors.purple,
                                             size: 20,
                                           ),
-                                        ),
+                        ),
                                         const Spacer(),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: brand.isActive
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: brand.isActive
                                                 ? Colors.green.withValues(
                                                     alpha: 0.1,
                                                   )
@@ -240,7 +240,7 @@ class _BrandsListScreenState extends State<BrandsListScreen> {
                                             borderRadius: BorderRadius.circular(
                                               12,
                                             ),
-                                          ),
+                        ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
@@ -258,16 +258,16 @@ class _BrandsListScreenState extends State<BrandsListScreen> {
                                                 brand.isActive
                                                     ? 'Active'
                                                     : 'Inactive',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w600,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
                                                   color: brand.isActive
                                                       ? Colors.green
                                                       : Colors.grey,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                                         ),
                                       ],
                                     ),
@@ -281,8 +281,8 @@ class _BrandsListScreenState extends State<BrandsListScreen> {
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    if (brand.code != null) ...[
-                                      const SizedBox(height: 4),
+                      if (brand.code != null) ...[
+                        const SizedBox(height: 4),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 6,
@@ -304,25 +304,25 @@ class _BrandsListScreenState extends State<BrandsListScreen> {
                                           ),
                                         ),
                                       ),
-                                    ],
+                      ],
                                     const Spacer(),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.inventory_2,
-                                          size: 14,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '$productCount products',
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.inventory_2,
+                            size: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$productCount products',
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
-                                                color: Colors.grey.shade600,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
+                            color: Colors.grey.shade600,
+                          ),
+                          ),
+                        ],
+                      ),
                                     const SizedBox(height: 8),
                                     Row(
                                       children: [
@@ -361,17 +361,17 @@ class _BrandsListScreenState extends State<BrandsListScreen> {
                                           color: Colors.red,
                                           style: IconButton.styleFrom(
                                             padding: const EdgeInsets.all(8),
-                                          ),
-                                        ),
-                                      ],
+                        ),
+                      ),
+                    ],
                                     ),
                                   ],
                                 ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                  ),
+                ),
+              );
+            },
+          ),
                     ),
             ),
           ],
@@ -435,47 +435,47 @@ class _BrandsListScreenState extends State<BrandsListScreen> {
         content: Form(
           key: formKey,
           child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Brand Name *',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter brand name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: codeController,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    labelText: 'Brand Code (Optional)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Brand Name *',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: descController,
-                  maxLines: 2,
-                  decoration: InputDecoration(
-                    labelText: 'Description (Optional)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter brand name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: codeController,
+                textCapitalization: TextCapitalization.characters,
+                decoration: InputDecoration(
+                  labelText: 'Brand Code (Optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ],
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: descController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Description (Optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
             ),
           ),
         ),

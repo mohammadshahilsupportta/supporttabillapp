@@ -138,22 +138,22 @@ class _CategoriesListScreenState extends State<CategoriesListScreen> {
             Expanded(
               child: filteredCategories.isEmpty
                   ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.category_outlined,
-                            size: 80,
-                            color: theme.primaryColor.withValues(alpha: 0.3),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.category_outlined,
+                  size: 80,
+                  color: theme.primaryColor.withValues(alpha: 0.3),
+                ),
+                const SizedBox(height: 24),
+                Text(
                             searchQuery.isEmpty
                                 ? 'No Categories Yet'
                                 : 'No Categories Found',
-                            style: theme.textTheme.headlineMedium,
-                          ),
-                          const SizedBox(height: 12),
+                  style: theme.textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 12),
                           Text(
                             searchQuery.isEmpty
                                 ? 'Add your first category'
@@ -163,19 +163,19 @@ class _CategoriesListScreenState extends State<CategoriesListScreen> {
                             ),
                           ),
                           if (searchQuery.isEmpty) ...[
-                            const SizedBox(height: 32),
-                            ElevatedButton.icon(
+                const SizedBox(height: 32),
+                ElevatedButton.icon(
                               onPressed: () =>
                                   _showCreateCategoryDialog(context, pc),
-                              icon: const Icon(Icons.add),
-                              label: const Text('Add Category'),
-                            ),
-                          ],
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add Category'),
+                ),
+              ],
                         ],
-                      ),
+            ),
                     )
                   : RefreshIndicator(
-                      onRefresh: () => pc.loadCategories(),
+          onRefresh: () => pc.loadCategories(),
                       child: GridView.builder(
                         // Extra bottom padding so last card is not hidden by FAB
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 88),
@@ -188,31 +188,31 @@ class _CategoriesListScreenState extends State<CategoriesListScreen> {
                               mainAxisSpacing: 16,
                             ),
                         itemCount: filteredCategories.length,
-                        itemBuilder: (context, index) {
+            itemBuilder: (context, index) {
                           final category = filteredCategories[index];
-                          final productCount = pc.products
-                              .where((p) => p.categoryId == category.id)
-                              .length;
+              final productCount = pc.products
+                  .where((p) => p.categoryId == category.id)
+                  .length;
 
-                          return Card(
+              return Card(
                             elevation: 2,
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                             child: InkWell(
                               borderRadius: BorderRadius.circular(12),
                               onTap: () => _showEditCategoryDialog(
                                 context,
                                 pc,
                                 category,
-                              ),
+                    ),
                               child: Padding(
                                 padding: const EdgeInsets.all(16),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Row(
-                                      children: [
+                    children: [
                                         Container(
                                           padding: const EdgeInsets.all(8),
                                           decoration: BoxDecoration(
@@ -228,15 +228,15 @@ class _CategoriesListScreenState extends State<CategoriesListScreen> {
                                             color: Colors.blue,
                                             size: 20,
                                           ),
-                                        ),
+                        ),
                                         const Spacer(),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 8,
-                                            vertical: 4,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: category.isActive
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: category.isActive
                                                 ? Colors.green.withValues(
                                                     alpha: 0.1,
                                                   )
@@ -246,7 +246,7 @@ class _CategoriesListScreenState extends State<CategoriesListScreen> {
                                             borderRadius: BorderRadius.circular(
                                               12,
                                             ),
-                                          ),
+                        ),
                                           child: Row(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
@@ -264,16 +264,16 @@ class _CategoriesListScreenState extends State<CategoriesListScreen> {
                                                 category.isActive
                                                     ? 'Active'
                                                     : 'Inactive',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: category.isActive
-                                                      ? Colors.green
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: category.isActive
+                                ? Colors.green
                                                       : Colors.grey,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                                         ),
                                       ],
                                     ),
@@ -287,8 +287,8 @@ class _CategoriesListScreenState extends State<CategoriesListScreen> {
                                       maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
-                                    if (category.code != null) ...[
-                                      const SizedBox(height: 4),
+                      if (category.code != null) ...[
+                        const SizedBox(height: 4),
                                       Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 6,
@@ -310,25 +310,25 @@ class _CategoriesListScreenState extends State<CategoriesListScreen> {
                                           ),
                                         ),
                                       ),
-                                    ],
+                      ],
                                     const Spacer(),
-                                    Row(
-                                      children: [
-                                        Icon(
-                                          Icons.inventory_2,
-                                          size: 14,
-                                          color: Colors.grey.shade600,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '$productCount products',
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.inventory_2,
+                            size: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '$productCount products',
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
-                                                color: Colors.grey.shade600,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
+                            color: Colors.grey.shade600,
+                          ),
+                          ),
+                        ],
+                      ),
                                     const SizedBox(height: 8),
                                     Row(
                                       children: [
@@ -367,17 +367,17 @@ class _CategoriesListScreenState extends State<CategoriesListScreen> {
                                           color: Colors.red,
                                           style: IconButton.styleFrom(
                                             padding: const EdgeInsets.all(8),
-                                          ),
-                                        ),
-                                      ],
+                        ),
+                      ),
+                    ],
                                     ),
                                   ],
                                 ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
+                  ),
+                ),
+              );
+            },
+          ),
                     ),
             ),
           ],
@@ -441,47 +441,47 @@ class _CategoriesListScreenState extends State<CategoriesListScreen> {
         content: Form(
           key: formKey,
           child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Category Name *',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter category name';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: codeController,
-                  textCapitalization: TextCapitalization.characters,
-                  decoration: InputDecoration(
-                    labelText: 'Category Code (Optional)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameController,
+                decoration: InputDecoration(
+                  labelText: 'Category Name *',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: descController,
-                  maxLines: 2,
-                  decoration: InputDecoration(
-                    labelText: 'Description (Optional)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter category name';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: codeController,
+                textCapitalization: TextCapitalization.characters,
+                decoration: InputDecoration(
+                  labelText: 'Category Code (Optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ],
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: descController,
+                maxLines: 2,
+                decoration: InputDecoration(
+                  labelText: 'Description (Optional)',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+            ],
             ),
           ),
         ),
