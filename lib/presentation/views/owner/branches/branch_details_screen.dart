@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../../core/routes/app_routes.dart';
 import '../../../controllers/branch_controller.dart';
 
 class BranchDetailsScreen extends StatelessWidget {
@@ -313,10 +314,9 @@ class BranchDetailsScreen extends StatelessWidget {
                         Expanded(
                           child: OutlinedButton.icon(
                             onPressed: () {
-                              Get.snackbar(
-                                'Coming Soon',
-                                'Edit branch feature will be available soon',
-                                snackPosition: SnackPosition.TOP,
+                              Get.toNamed(
+                                AppRoutes.branchEdit,
+                                arguments: branch,
                               );
                             },
                             icon: const Icon(Icons.edit_outlined),

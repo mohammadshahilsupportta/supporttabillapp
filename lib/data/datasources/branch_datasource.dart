@@ -91,8 +91,17 @@ class BranchDataSource {
           .single();
 
       return response;
-    } catch (e) {
+    } on PostgrestException catch (e) {
       print('[BranchDataSource] Error updating branch: $e');
+      // Handle unique violation on branch code (same as website API)
+      if (e.code == '23505' ||
+          e.message.toLowerCase().contains('duplicate key') ||
+          e.message.toLowerCase().contains('code')) {
+        throw Exception('BRANCH_CODE_ALREADY_EXISTS');
+      }
+      rethrow;
+    } catch (e) {
+      print('[BranchDataSource] Error updating branch (unknown): $e');
       rethrow;
     }
   }

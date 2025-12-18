@@ -68,6 +68,39 @@ class BranchController extends GetxController {
     }
   }
 
+  Future<bool> updateBranch({
+    required String branchId,
+    required String name,
+    required String code,
+    String? address,
+    String? phone,
+    bool? isMain,
+  }) async {
+    try {
+      isLoading.value = true;
+
+      final Map<String, dynamic> updateData = {
+        'name': name,
+        'code': code,
+        'address': address,
+        'phone': phone,
+      };
+
+      if (isMain != null) {
+        updateData['is_main'] = isMain;
+      }
+
+      await _dataSource.updateBranch(branchId, updateData);
+      await loadBranches();
+      return true;
+    } on Exception catch (e) {
+      print('[BranchController] Error updating branch: $e');
+      rethrow;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<bool> toggleBranchStatus(String branchId, bool isActive) async {
     try {
       final success = await _dataSource.toggleBranchStatus(branchId, isActive);

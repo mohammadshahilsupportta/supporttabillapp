@@ -28,7 +28,7 @@ class _CreateBranchScreenState extends State<CreateBranchScreen> {
   final _adminPasswordController = TextEditingController();
 
   bool _isLoading = false;
-  bool _createAdmin = true;
+  bool _createAdmin = false;
   bool _isAdminPasswordObscured = true;
 
   @override
