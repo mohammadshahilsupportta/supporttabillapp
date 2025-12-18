@@ -26,21 +26,7 @@ class _SuperadminDashboardScreenState extends State<SuperadminDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_getTitle()),
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () =>
-                Get.snackbar('Notifications', 'No new notifications'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () => Get.find<AuthController>().signOut(),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: Text(_getTitle()), elevation: 0),
       body: _screens[_selectedIndex],
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showQuickActionsSheet(context),

@@ -92,6 +92,17 @@ class BranchController extends GetxController {
     await loadBranches();
   }
 
+  Future<bool> deleteBranch(String branchId) async {
+    try {
+      await _dataSource.deleteBranch(branchId);
+      await loadBranches();
+      return true;
+    } catch (e) {
+      print('[BranchController] Error deleting branch: $e');
+      return false;
+    }
+  }
+
   int get totalBranches => branches.length;
   int get activeBranches =>
       branches.where((b) => b['is_active'] == true).length;

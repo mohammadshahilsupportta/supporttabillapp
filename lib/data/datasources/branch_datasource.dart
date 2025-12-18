@@ -111,6 +111,17 @@ class BranchDataSource {
     }
   }
 
+  // Delete branch
+  Future<bool> deleteBranch(String branchId) async {
+    try {
+      await _client.from('branches').delete().eq('id', branchId);
+      return true;
+    } catch (e) {
+      print('[BranchDataSource] Error deleting branch: $e');
+      rethrow;
+    }
+  }
+
   // Get branch stats (user count, sales, etc.)
   Future<Map<String, dynamic>> getBranchStats(String branchId) async {
     try {
