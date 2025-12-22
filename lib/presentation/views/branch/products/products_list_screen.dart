@@ -2227,8 +2227,11 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                               onPressed: () {
                                 Navigator.of(context).pop();
                                 Get.toNamed(
-                                  AppRoutes.editProduct,
-                                  parameters: {'id': product.id},
+                                  AppRoutes.editProduct.replaceAll(
+                                    ':id',
+                                    product.id,
+                                  ),
+                                  arguments: {'productId': product.id},
                                 );
                               },
                               icon: const Icon(Icons.edit_outlined),
