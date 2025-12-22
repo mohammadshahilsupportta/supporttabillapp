@@ -216,18 +216,58 @@ class StockDataSource {
       final userId = _supabase.currentUserId;
       if (userId == null) throw Exception('User not authenticated');
 
-      // Call RPC function to add stock (this handles ledger + current stock update)
-      await _supabase.rpc(
-        'add_stock_in',
-        params: {
-          'p_branch_id': branchId,
-          'p_product_id': productId,
-          'p_quantity': quantity,
-          'p_reason': reason,
-          'p_reference_id': referenceId,
-          'p_created_by': userId,
-        },
-      );
+      // 1) Get branch to fetch tenant_id
+      final branchData = await _supabase
+          .from('branches')
+          .select('tenant_id')
+          .eq('id', branchId)
+          .maybeSingle();
+
+      if (branchData == null || branchData['tenant_id'] == null) {
+        throw Exception('Branch not found');
+      }
+
+      final tenantId = branchData['tenant_id'] as String;
+
+      // 2) Get current stock (if any)
+      final currentStock = await _supabase
+          .from('current_stock')
+          .select()
+          .eq('branch_id', branchId)
+          .eq('product_id', productId)
+          .maybeSingle();
+
+      final previousStock = currentStock?['quantity'] as int? ?? 0;
+      final newStock = previousStock + quantity;
+
+      // 3) Insert stock ledger entry (mirrors website logic)
+      await _supabase.from('stock_ledger').insert({
+        'tenant_id': tenantId,
+        'branch_id': branchId,
+        'product_id': productId,
+        'transaction_type': 'stock_in',
+        'quantity': quantity,
+        'previous_stock': previousStock,
+        'current_stock': newStock,
+        'reference_id': referenceId,
+        'reason': reason,
+        'created_by': userId,
+      });
+
+      // 4) Upsert current_stock
+      if (currentStock != null && currentStock['id'] != null) {
+        await _supabase
+            .from('current_stock')
+            .update({'quantity': newStock, 'updated_at': DateTime.now().toIso8601String()})
+            .eq('id', currentStock['id'] as String);
+      } else {
+        await _supabase.from('current_stock').insert({
+          'tenant_id': tenantId,
+          'branch_id': branchId,
+          'product_id': productId,
+          'quantity': newStock,
+        });
+      }
     } catch (e) {
       throw Exception('Failed to add stock: ${e.toString()}');
     }
@@ -245,17 +285,63 @@ class StockDataSource {
       final userId = _supabase.currentUserId;
       if (userId == null) throw Exception('User not authenticated');
 
-      await _supabase.rpc(
-        'add_stock_out',
-        params: {
-          'p_branch_id': branchId,
-          'p_product_id': productId,
-          'p_quantity': quantity,
-          'p_reason': reason,
-          'p_reference_id': referenceId,
-          'p_created_by': userId,
-        },
-      );
+      // 1) Get branch to fetch tenant_id
+      final branchData = await _supabase
+          .from('branches')
+          .select('tenant_id')
+          .eq('id', branchId)
+          .maybeSingle();
+
+      if (branchData == null || branchData['tenant_id'] == null) {
+        throw Exception('Branch not found');
+      }
+
+      final tenantId = branchData['tenant_id'] as String;
+
+      // 2) Get current stock and validate availability
+      final currentStock = await _supabase
+          .from('current_stock')
+          .select()
+          .eq('branch_id', branchId)
+          .eq('product_id', productId)
+          .maybeSingle();
+
+      final previousStock = currentStock?['quantity'] as int? ?? 0;
+      if (previousStock < quantity) {
+        throw Exception('Insufficient stock');
+      }
+
+      final newStock = previousStock - quantity;
+
+      // 3) Insert stock ledger entry (negative quantity for stock_out, like website)
+      await _supabase.from('stock_ledger').insert({
+        'tenant_id': tenantId,
+        'branch_id': branchId,
+        'product_id': productId,
+        'transaction_type': 'stock_out',
+        'quantity': -quantity,
+        'previous_stock': previousStock,
+        'current_stock': newStock,
+        'reference_id': referenceId,
+        'reason': reason,
+        'created_by': userId,
+      });
+
+      // 4) Update current_stock
+      if (currentStock != null && currentStock['id'] != null) {
+        await _supabase
+            .from('current_stock')
+            .update({'quantity': newStock, 'updated_at': DateTime.now().toIso8601String()})
+            .eq('id', currentStock['id'] as String);
+      } else {
+        // Should not happen because we already validated quantity, but handle gracefully
+        await _supabase.from('current_stock').insert({
+          'tenant_id': tenantId,
+          'branch_id': branchId,
+          'product_id': productId,
+          'quantity': newStock,
+        });
+      }
     } catch (e) {
       throw Exception('Failed to remove stock: ${e.toString()}');
     }

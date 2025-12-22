@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/routes/app_routes.dart';
+import '../../../../data/models/product_model.dart';
 import '../../../controllers/auth_controller.dart';
+import '../../../controllers/branch_controller.dart';
 import '../../../controllers/branch_store_controller.dart';
 import '../../../controllers/product_controller.dart';
 import '../../../controllers/stock_controller.dart';
@@ -493,10 +495,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                   if (value == 'view') {
                                     _showProductDetails(context, product);
                                   } else if (value == 'stock') {
-                                    Get.toNamed(
-                                      '/branch/stock',
-                                      arguments: product.id,
-                                    );
+                                    _showManageStockSheet(context, product);
                                   }
                                 },
                               ),
@@ -1087,6 +1086,634 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Show manage stock dialog for a specific product (matching website design)
+  void _showManageStockSheet(BuildContext context, dynamic product) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final TextEditingController adjustmentAmountController =
+        TextEditingController(text: '1');
+    int adjustedQuantity = 0;
+    int currentQuantity = 0;
+    bool isLoading = true;
+
+    // Get branch info
+    final authController = Get.find<AuthController>();
+    final user = authController.currentUser.value;
+    String? branchId;
+    Map<String, dynamic>? branchData;
+
+    if (user?.role.value == 'tenant_owner') {
+      try {
+        if (Get.isRegistered<BranchStoreController>()) {
+          final branchStore = Get.find<BranchStoreController>();
+          branchId = branchStore.selectedBranchId.value;
+        }
+        if (Get.isRegistered<BranchController>()) {
+          final branchController = Get.find<BranchController>();
+          if (branchId != null) {
+            branchData = branchController.branches.firstWhereOrNull(
+              (b) => b['id'] == branchId,
+            );
+          }
+        }
+      } catch (_) {
+        branchId = null;
+      }
+    } else {
+      branchId = authController.branchId;
+    }
+
+    // Load current stock
+    _getProductStockQuantity(product.id).then((stock) {
+      currentQuantity = stock;
+      adjustedQuantity = stock;
+      isLoading = false;
+    });
+
+    bool isSaving = false;
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 500),
+                padding: const EdgeInsets.all(24),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Manage Stock',
+                            style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Product Section
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Product',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.grey.shade800
+                                  : Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  product.name,
+                                  style: theme.textTheme.bodyLarge?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                if (product.sku != null &&
+                                    product.sku!.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'SKU: ${product.sku}',
+                                    style: theme.textTheme.bodySmall?.copyWith(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ],
+                                if (product.stockTrackingType ==
+                                    StockTrackingType.serial) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.tag,
+                                        size: 12,
+                                        color: Colors.purple.shade600,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Serial Number Tracking',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                          color: Colors.purple.shade600,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 16),
+
+                      // Branch Section
+                      if (branchId != null && branchData != null) ...[
+                        Builder(
+                          builder: (context) {
+                            final branch = branchData!;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Branch',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Container(
+                                  padding: const EdgeInsets.all(12),
+                                  decoration: BoxDecoration(
+                                    color: Colors.blue.shade50,
+                                    border: Border.all(
+                                      color: Colors.blue.shade200,
+                                      width: 1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          branch['name'] ?? '',
+                                          style: theme.textTheme.bodyLarge
+                                              ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.blue.shade900,
+                                          ),
+                                        ),
+                                      ),
+                                      if (branch['is_main'] == true) ...[
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.yellow.shade100,
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        'Main',
+                                        style: theme.textTheme.bodySmall
+                                            ?.copyWith(
+                                          color: Colors.yellow.shade800,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                              ],
+                            );
+                          },
+                        ),
+                      ]
+                      else if (user?.role.value == 'tenant_owner')
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.yellow.shade50,
+                            border: Border.all(
+                              color: Colors.yellow.shade200,
+                              width: 1,
+                            ),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Center(
+                            child: Text(
+                              'Please select a branch from the header to manage stock.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.yellow.shade800,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ),
+
+                      if (branchId != null &&
+                          product.stockTrackingType ==
+                              StockTrackingType.quantity) ...[
+                        const SizedBox(height: 16),
+
+                        // Adjust Stock Quantity Section
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Adjust Stock Quantity',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            FutureBuilder<int>(
+                              future: _getProductStockQuantity(product.id),
+                              builder: (context, snapshot) {
+                                if (snapshot.hasData) {
+                                  currentQuantity = snapshot.data ?? 0;
+                                  if (adjustedQuantity == 0) {
+                                    adjustedQuantity = currentQuantity;
+                                  }
+                                }
+
+                                return Column(
+                                  children: [
+                                    // Quantity controls
+                                    Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        // Decrement Button
+                                        Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: isLoading
+                                                ? null
+                                                : () {
+                                                    final decrementAmount =
+                                                        int.tryParse(
+                                                                adjustmentAmountController
+                                                                    .text) ??
+                                                            1;
+                                                    setModalState(() {
+                                                      adjustedQuantity = (adjustedQuantity -
+                                                              decrementAmount)
+                                                          .clamp(0, 999999);
+                                                    });
+                                                  },
+                                            borderRadius:
+                                                BorderRadius.circular(30),
+                                            child: Container(
+                                              width: 48,
+                                              height: 48,
+                                              decoration: BoxDecoration(
+                                                border: Border.all(
+                                                  color: isDark
+                                                      ? Colors.grey.shade700
+                                                      : Colors.grey.shade300,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(30),
+                                              ),
+                                              child: Icon(
+                                                Icons.remove,
+                                                size: 20,
+                                                color: adjustedQuantity <= 0
+                                                    ? Colors.grey.shade400
+                                                    : theme.colorScheme
+                                                        .onSurface,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+
+                                        // Quantity Display
+                                        Column(
+                                          children: [
+                                            Text(
+                                              adjustedQuantity.toString(),
+                                              style: theme.textTheme
+                                                  .displaySmall?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 32,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              product.unit,
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                color: Colors.grey.shade600,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            if (adjustedQuantity !=
+                                                currentQuantity) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                adjustedQuantity > currentQuantity
+                                                    ? '+${adjustedQuantity - currentQuantity} from $currentQuantity'
+                                                    : '${adjustedQuantity - currentQuantity} from $currentQuantity',
+                                                style: theme.textTheme.bodySmall
+                                                    ?.copyWith(
+                                                  color: Colors.blue.shade600,
+                                                  fontSize: 12,
+                                                ),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                        const SizedBox(width: 16),
+
+                                        // Increment Button
+                                        Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: isLoading
+                                                ? null
+                                                : () {
+                                                    final incrementAmount =
+                                                        int.tryParse(
+                                                                adjustmentAmountController
+                                                                    .text) ??
+                                                            1;
+                                                    setModalState(() {
+                                                      adjustedQuantity =
+                                                          adjustedQuantity +
+                                                              incrementAmount;
+                                                    });
+                                                  },
+                                            borderRadius:
+                                                BorderRadius.circular(30),
+                                            child: Container(
+                                              width: 48,
+                                              height: 48,
+                                              decoration: BoxDecoration(
+                                                border: Border.all(
+                                                  color: isDark
+                                                      ? Colors.grey.shade700
+                                                      : Colors.grey.shade300,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(30),
+                                              ),
+                                              child: Icon(
+                                                Icons.add,
+                                                size: 20,
+                                                color: theme
+                                                    .colorScheme.onSurface,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                    const SizedBox(height: 16),
+
+                                    // Adjustment Amount Input
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Adjustment Amount',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                            color: Colors.grey.shade500,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        TextField(
+                                          controller: adjustmentAmountController,
+                                          keyboardType: TextInputType.number,
+                                          textAlign: TextAlign.center,
+                                          style: theme.textTheme.bodyLarge
+                                              ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                          decoration: InputDecoration(
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 10,
+                                            ),
+                                            hintText: '1',
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Center(
+                                          child: Text(
+                                            'Amount to add/subtract per click',
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                              color: Colors.grey.shade400,
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+
+                      const SizedBox(height: 24),
+
+                      // Action Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () => Navigator.of(ctx).pop(),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
+                              ),
+                              child: const Text('Cancel'),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: product.stockTrackingType ==
+                                    StockTrackingType.quantity
+                                ? FutureBuilder<int>(
+                                    future:
+                                        _getProductStockQuantity(product.id),
+                                    builder: (context, snapshot) {
+                                      final currentQty = snapshot.data ?? 0;
+                                      final difference =
+                                          adjustedQuantity - currentQty;
+
+                                      return ElevatedButton(
+                                        onPressed: (branchId == null ||
+                                                difference == 0 ||
+                                                adjustedQuantity < 0 ||
+                                                isSaving)
+                                            ? null
+                                            : () async {
+                                                if (branchId == null) {
+                                                  Get.snackbar(
+                                                    'Error',
+                                                    'Please select a branch first',
+                                                    snackPosition:
+                                                        SnackPosition.BOTTOM,
+                                                  );
+                                                  return;
+                                                }
+
+                                                if (difference == 0) {
+                                                  Get.snackbar(
+                                                    'Info',
+                                                    'No changes to save',
+                                                    snackPosition:
+                                                        SnackPosition.BOTTOM,
+                                                  );
+                                                  Navigator.of(ctx).pop();
+                                                  return;
+                                                }
+
+                                                // Set loading state
+                                                setModalState(() {
+                                                  isSaving = true;
+                                                });
+
+                                                try {
+                                                  final stockController =
+                                                      Get.find<StockController>();
+
+                                                  bool success = false;
+                                                  if (difference > 0) {
+                                                    // Stock In
+                                                    success = await stockController
+                                                        .addStockIn(
+                                                      productId: product.id,
+                                                      quantity: difference,
+                                                      reason:
+                                                          'Stock adjustment from products page',
+                                                      branchId: branchId,
+                                                    );
+                                                  } else {
+                                                    // Stock Out
+                                                    if (adjustedQuantity < 0) {
+                                                      setModalState(() {
+                                                        isSaving = false;
+                                                      });
+                                                      Get.snackbar(
+                                                        'Error',
+                                                        'Stock cannot be negative',
+                                                        snackPosition:
+                                                            SnackPosition.BOTTOM,
+                                                      );
+                                                      return;
+                                                    }
+                                                    success = await stockController
+                                                        .addStockOut(
+                                                      productId: product.id,
+                                                      quantity: difference.abs(),
+                                                      reason:
+                                                          'Stock adjustment from products page',
+                                                      branchId: branchId,
+                                                    );
+                                                  }
+
+                                                  if (success) {
+                                                    // Refresh products + stock
+                                                    await productController
+                                                        .loadProducts();
+                                                    await stockController
+                                                        .loadCurrentStock(
+                                                      branchId: branchId,
+                                                    );
+                                                    Navigator.of(ctx).pop();
+                                                  } else {
+                                                    // Reset loading state on error
+                                                    setModalState(() {
+                                                      isSaving = false;
+                                                    });
+                                                  }
+                                                } catch (e) {
+                                                  // Reset loading state on error
+                                                  setModalState(() {
+                                                    isSaving = false;
+                                                  });
+                                                }
+                                              },
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.blue.shade600,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
+                                        ),
+                                        child: isSaving
+                                            ? SizedBox(
+                                                width: 20,
+                                                height: 20,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                          Color>(Colors.white),
+                                                ),
+                                              )
+                                            : const Text('Save'),
+                                      );
+                                    },
+                                  )
+                                : ElevatedButton(
+                                    onPressed: () => Navigator.of(ctx).pop(),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.blue.shade600,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                    ),
+                                    child: const Text('Done'),
+                                  ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

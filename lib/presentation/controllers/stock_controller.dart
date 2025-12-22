@@ -112,20 +112,34 @@ class StockController extends GetxController {
     required String productId,
     required int quantity,
     String? reason,
+    String? branchId,
   }) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
 
       final authController = Get.find<AuthController>();
-      final branchId = authController.branchId;
+      final user = authController.currentUser.value;
+      String? targetBranchId = branchId ?? authController.branchId;
 
-      if (branchId == null) {
-        throw Exception('Branch ID not found');
+      // For tenant owners, use selected branch from BranchStoreController
+      if (user?.role.value == 'tenant_owner' && targetBranchId == null) {
+        try {
+          if (Get.isRegistered<BranchStoreController>()) {
+            final branchStore = Get.find<BranchStoreController>();
+            targetBranchId = branchStore.selectedBranchId.value;
+          }
+        } catch (_) {
+          // BranchStoreController not available
+        }
+      }
+
+      if (targetBranchId == null) {
+        throw Exception('Branch ID not found. Please select a branch.');
       }
 
       await _dataSource.addStockIn(
-        branchId: branchId,
+        branchId: targetBranchId,
         productId: productId,
         quantity: quantity,
         reason: reason,
@@ -138,7 +152,7 @@ class StockController extends GetxController {
       );
 
       // Reload stock
-      await loadCurrentStock();
+      await loadCurrentStock(branchId: targetBranchId);
 
       return true;
     } catch (e) {
@@ -159,20 +173,34 @@ class StockController extends GetxController {
     required String productId,
     required int quantity,
     String? reason,
+    String? branchId,
   }) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
 
       final authController = Get.find<AuthController>();
-      final branchId = authController.branchId;
+      final user = authController.currentUser.value;
+      String? targetBranchId = branchId ?? authController.branchId;
 
-      if (branchId == null) {
-        throw Exception('Branch ID not found');
+      // For tenant owners, use selected branch from BranchStoreController
+      if (user?.role.value == 'tenant_owner' && targetBranchId == null) {
+        try {
+          if (Get.isRegistered<BranchStoreController>()) {
+            final branchStore = Get.find<BranchStoreController>();
+            targetBranchId = branchStore.selectedBranchId.value;
+          }
+        } catch (_) {
+          // BranchStoreController not available
+        }
+      }
+
+      if (targetBranchId == null) {
+        throw Exception('Branch ID not found. Please select a branch.');
       }
 
       await _dataSource.addStockOut(
-        branchId: branchId,
+        branchId: targetBranchId,
         productId: productId,
         quantity: quantity,
         reason: reason,
@@ -185,7 +213,7 @@ class StockController extends GetxController {
       );
 
       // Reload stock
-      await loadCurrentStock();
+      await loadCurrentStock(branchId: targetBranchId);
 
       return true;
     } catch (e) {
