@@ -40,6 +40,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
 
   Product? _product;
   bool _returnToDetails = false;
+  BuildContext? _context;
 
   // Stock entry state
   bool _addStockOnUpdate = false;
@@ -126,6 +127,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
       }
       if (args['returnToDetails'] == true) {
         _returnToDetails = true;
+        print('EditProductScreen: returnToDetails flag set to true in _loadProduct');
       }
     }
     
@@ -246,7 +248,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_product == null) return;
-
+    
     setState(() => _isLoading = true);
 
     try {
@@ -282,7 +284,9 @@ class _EditProductScreenState extends State<EditProductScreen> {
       );
 
       if (!success) {
-        setState(() => _isLoading = false);
+        if (mounted) {
+          setState(() => _isLoading = false);
+        }
         return;
       }
 
@@ -352,51 +356,89 @@ class _EditProductScreenState extends State<EditProductScreen> {
         );
       }
 
-      // Refresh product data before navigating back
-      if (_productController != null) {
-        await _productController!.loadProducts();
-      }
-      if (_stockController != null) {
-        final authController = Get.find<AuthController>();
-        final user = authController.currentUser.value;
-        String? branchId;
-        if (user?.role.value == 'tenant_owner') {
-          try {
-            final branchStore = Get.find<BranchStoreController>();
-            branchId = branchStore.selectedBranchId.value;
-          } catch (_) {
-            // BranchStoreController not available
-          }
-        } else {
-          branchId = authController.branchId;
-        }
-        await _stockController!.loadCurrentStock(branchId: branchId);
-      }
-
       // Navigate back after successful update
-      // If we came from product details screen, pop back with refresh flag
-      // Otherwise, just go back (to products list)
+      // ALWAYS navigate back - check returnToDetails to determine where to go
+      print('EditProductScreen: About to navigate back. _returnToDetails = $_returnToDetails');
+      
+      // Reset loading state before navigation
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+      
+      // Small delay to ensure snackbar is shown
+      await Future.delayed(const Duration(milliseconds: 300));
+      
       if (_returnToDetails) {
         // Pop back to product details screen with refresh flag
-        Get.back(result: 'refresh');
+        print('EditProductScreen: Popping back to product details screen');
+        // Try Navigator.pop first if context is available, then fallback to Get.back()
+        bool navigated = false;
+        if (mounted && _context != null) {
+          try {
+            Navigator.of(_context!).pop('refresh');
+            navigated = true;
+            print('EditProductScreen: Navigator.pop(refresh) called successfully');
+          } catch (e) {
+            print('EditProductScreen: Navigator.pop failed: $e');
+          }
+        }
+        // Fallback to Get.back() if Navigator.pop didn't work
+        if (!navigated) {
+          try {
+            Get.back(result: 'refresh');
+            navigated = true;
+            print('EditProductScreen: Get.back(result: refresh) called successfully');
+          } catch (e) {
+            print('EditProductScreen: Get.back() also failed: $e');
+          }
+        }
+        if (!navigated) {
+          print('EditProductScreen: ERROR - All navigation methods failed!');
+        }
       } else {
+        // Refresh product data before navigating back to products list
+        print('EditProductScreen: Returning to products list');
+        if (_productController != null) {
+          await _productController!.loadProducts();
+        }
+        if (_stockController != null) {
+          final authController = Get.find<AuthController>();
+          final user = authController.currentUser.value;
+          String? branchId;
+          if (user?.role.value == 'tenant_owner') {
+            try {
+              final branchStore = Get.find<BranchStoreController>();
+              branchId = branchStore.selectedBranchId.value;
+            } catch (_) {
+              // BranchStoreController not available
+            }
+          } else {
+            branchId = authController.branchId;
+          }
+          await _stockController!.loadCurrentStock(branchId: branchId);
+        }
         // Use Get.back() which works with GetX navigation
-        Get.back();
+        if (mounted) {
+          Get.back();
+        }
       }
     } catch (e) {
+      print('EditProductScreen: ERROR in _submit: $e');
       Get.snackbar(
         'Error',
         e.toString(),
         backgroundColor: Colors.red,
         colorText: Colors.white,
       );
-    } finally {
-      setState(() => _isLoading = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    _context = context; // Store context for navigation
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
