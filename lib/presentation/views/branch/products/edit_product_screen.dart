@@ -290,6 +290,10 @@ class _EditProductScreenState extends State<EditProductScreen> {
         return;
       }
 
+      // Track if stock was added to avoid duplicate snackbars
+      bool stockAdded = false;
+      int? stockQuantityAdded;
+      
       // Add stock if requested
       if (_addStockOnUpdate && _selectedBranchId != null) {
         if (_stockTrackingType == StockTrackingType.quantity) {
@@ -299,18 +303,15 @@ class _EditProductScreenState extends State<EditProductScreen> {
             if (quantity != null && quantity > 0) {
               try {
                 if (_stockController != null) {
-                  await _stockController!.addStockIn(
+                  stockAdded = await _stockController!.addStockIn(
                     productId: _product!.id,
                     quantity: quantity,
                     reason: 'Stock entry after product update',
                     branchId: _selectedBranchId,
                   );
-                  Get.snackbar(
-                    'Success',
-                    'Product updated and $quantity units added to stock!',
-                    backgroundColor: Colors.green,
-                    colorText: Colors.white,
-                  );
+                  if (stockAdded) {
+                    stockQuantityAdded = quantity;
+                  }
                 }
               } catch (stockError) {
                 Get.snackbar(
@@ -331,28 +332,54 @@ class _EditProductScreenState extends State<EditProductScreen> {
           if (validSerials.isNotEmpty) {
             // Note: Serial number addition would need to be implemented
             // For now, we'll just show a message
-            Get.snackbar(
-              'Success',
-              'Product updated. Serial number addition feature coming soon.',
-              backgroundColor: Colors.green,
-              colorText: Colors.white,
-            );
+            stockAdded = true; // Mark as added to skip general message
           }
         }
       }
 
-      if (!_addStockOnUpdate ||
+      // Show a single success message - combined if stock was added, otherwise just product update
+      // Close any existing snackbars first to avoid duplicates
+      try {
+        Get.closeAllSnackbars();
+      } catch (_) {
+        // Ignore if no snackbars are open
+      }
+      
+      // Small delay to ensure previous snackbar is closed
+      await Future.delayed(const Duration(milliseconds: 200));
+      
+      if (stockAdded && stockQuantityAdded != null) {
+        // Show combined message for product update + stock addition
+        Get.snackbar(
+          'Success',
+          'Product "${_nameController.text.trim()}" updated and $stockQuantityAdded units added to stock!',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+      } else if (stockAdded && _stockTrackingType == StockTrackingType.serial) {
+        // Serial number case
+        Get.snackbar(
+          'Success',
+          'Product "${_nameController.text.trim()}" updated. Serial number addition feature coming soon.',
+          backgroundColor: Colors.green,
+          colorText: Colors.white,
+          duration: const Duration(seconds: 2),
+        );
+      } else if (!_addStockOnUpdate ||
           (_stockTrackingType == StockTrackingType.quantity &&
               _initialQuantityController.text.isEmpty) ||
           (_stockTrackingType == StockTrackingType.serial &&
               _serialNumberControllers
                   .where((c) => c.text.trim().isNotEmpty)
                   .isEmpty)) {
+        // General success message when no stock was added
         Get.snackbar(
           'Success',
           'Product "${_nameController.text.trim()}" updated successfully!',
           backgroundColor: Colors.green,
           colorText: Colors.white,
+          duration: const Duration(seconds: 2),
         );
       }
 
