@@ -30,7 +30,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
     super.initState();
     // Load stock for the appropriate branch
     _loadStockForCurrentBranch();
-    
+
     // Listen to branch changes for tenant owners
     final authController = Get.find<AuthController>();
     final user = authController.currentUser.value;
@@ -54,7 +54,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
   Future<void> _loadStockForCurrentBranch() async {
     final authController = Get.find<AuthController>();
     final user = authController.currentUser.value;
-    
+
     String? branchId;
     if (user?.role.value == 'tenant_owner') {
       // For tenant owners, use selected branch
@@ -70,7 +70,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
       // For branch users, use their branch
       branchId = authController.branchId;
     }
-    
+
     await stockController.loadCurrentStock(branchId: branchId);
   }
 
@@ -174,336 +174,363 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
 
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Header row with product name and active/inactive switch
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Product icon
-                          Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: theme.primaryColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              Icons.shopping_bag_outlined,
-                              color: theme.primaryColor,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          // Product name
-                          Expanded(
-                            child: Text(
-                              product.name,
-                              style: theme.textTheme.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: () => _showProductDetails(context, product),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header row with product name and active/inactive switch
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Product icon
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: theme.primaryColor.withValues(
+                                  alpha: 0.1,
+                                ),
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              child: Icon(
+                                Icons.shopping_bag_outlined,
+                                color: theme.primaryColor,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          // Active/Inactive Toggle Switch at top right
-                          FutureBuilder<int>(
-                            future: _getProductStockQuantity(product.id),
-                            builder: (context, stockSnapshot) {
-                              final stock = stockSnapshot.data ?? 0;
-                              // Auto-inactive logic: If stock is 0, product should be inactive (for display)
-                              final shouldBeInactive = stock == 0;
-                              final effectiveIsActive = shouldBeInactive ? false : product.isActive;
-                              // Can only activate if stock > 0
-                              final canActivate = stock > 0;
-
-                              return Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Switch(
-                                    value: effectiveIsActive,
-                                    onChanged: canActivate
-                                        ? (bool newValue) async {
-                                            // Prevent enabling if stock is 0
-                                            if (newValue && stock == 0) {
-                                              Get.snackbar(
-                                                'Error',
-                                                'Cannot activate product with zero stock. Please add stock first.',
-                                                snackPosition: SnackPosition.BOTTOM,
-                                              );
-                                              return;
-                                            }
-                                            await productController
-                                                .toggleProductActive(
-                                                  product.id,
-                                                  newValue,
-                                                  currentStock: stock,
-                                                );
-                                          }
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    effectiveIsActive ? 'Active' : 'Inactive',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: effectiveIsActive
-                                          ? Colors.green
-                                          : Colors.grey,
-                                    ),
-                                  ),
-                                  if (shouldBeInactive && !product.isActive) ...[
-                                    const SizedBox(width: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 4,
-                                        vertical: 1,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange.withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(3),
-                                      ),
-                                      child: Text(
-                                        'Auto',
-                                        style: theme.textTheme.bodySmall?.copyWith(
-                                          color: Colors.orange,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      // Product details
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 4),
-                          // SKU + Category / Brand row
-                          Row(
-                            children: [
-                              if (product.sku != null &&
-                                  (product.sku ?? '').isNotEmpty) ...[
-                                Icon(
-                                  Icons.qr_code_2,
-                                  size: 14,
-                                  color: Colors.grey.shade600,
-                                ),
-                                const SizedBox(width: 4),
-                                Flexible(
-                                  child: Text(
-                                    product.sku!,
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      fontFamily: 'monospace',
-                                      color: Colors.grey.shade700,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                              if (product.category != null ||
-                                  product.brand != null) ...[
-                                if (product.sku != null &&
-                                    (product.sku ?? '').isNotEmpty)
-                                  const SizedBox(width: 12),
-                                Flexible(
-                                  child: Text(
-                                    [
-                                      if (product.category != null)
-                                        product.category!.name,
-                                      if (product.brand != null)
-                                        product.brand!.name,
-                                    ].join(' • '),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: Colors.grey.shade700,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Text(
-                                '₹${product.sellingPrice.toStringAsFixed(2)}',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.green,
+                            const SizedBox(width: 12),
+                            // Product name
+                            Expanded(
+                              child: Text(
+                                product.name,
+                                style: theme.textTheme.bodyLarge?.copyWith(
                                   fontWeight: FontWeight.w600,
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(width: 8),
-                              Text(
-                                '• ${product.unit}',
-                                style: theme.textTheme.bodySmall,
-                              ),
-                              if (product.gstRate > 0) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(4),
-                                  ),
-                                  child: Text(
-                                    'GST ${product.gstRate}%',
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: Colors.orange,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          // Show stock quantity
-                          FutureBuilder<int>(
-                            future: _getProductStockQuantity(product.id),
-                            builder: (context, snapshot) {
-                              final stock = snapshot.data ?? 0;
-                              final isLowStock =
-                                  product.minStock > 0 &&
-                                  stock <= product.minStock;
-                              final isSoldOut = stock == 0;
+                            ),
+                            const SizedBox(width: 8),
+                            // Active/Inactive Toggle Switch at top right
+                            FutureBuilder<int>(
+                              future: _getProductStockQuantity(product.id),
+                              builder: (context, stockSnapshot) {
+                                final stock = stockSnapshot.data ?? 0;
+                                // Auto-inactive logic: If stock is 0, product should be inactive (for display)
+                                final shouldBeInactive = stock == 0;
+                                final effectiveIsActive = shouldBeInactive
+                                    ? false
+                                    : product.isActive;
+                                // Can only activate if stock > 0
+                                final canActivate = stock > 0;
 
-                              return Row(
-                                children: [
+                                return Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Switch(
+                                      value: effectiveIsActive,
+                                      onChanged: canActivate
+                                          ? (bool newValue) async {
+                                              // Prevent enabling if stock is 0
+                                              if (newValue && stock == 0) {
+                                                Get.snackbar(
+                                                  'Error',
+                                                  'Cannot activate product with zero stock. Please add stock first.',
+                                                  snackPosition:
+                                                      SnackPosition.BOTTOM,
+                                                );
+                                                return;
+                                              }
+                                              await productController
+                                                  .toggleProductActive(
+                                                    product.id,
+                                                    newValue,
+                                                    currentStock: stock,
+                                                  );
+                                            }
+                                          : null,
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      effectiveIsActive ? 'Active' : 'Inactive',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: effectiveIsActive
+                                                ? Colors.green
+                                                : Colors.grey,
+                                          ),
+                                    ),
+                                    if (shouldBeInactive &&
+                                        !product.isActive) ...[
+                                      const SizedBox(width: 4),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 4,
+                                          vertical: 1,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            3,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Auto',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: Colors.orange,
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // Product details
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 4),
+                            // SKU + Category / Brand row
+                            Row(
+                              children: [
+                                if (product.sku != null &&
+                                    (product.sku ?? '').isNotEmpty) ...[
                                   Icon(
-                                    isSoldOut
-                                        ? Icons.report_gmailerrorred_outlined
-                                        : Icons.inventory_outlined,
+                                    Icons.qr_code_2,
                                     size: 14,
-                                    color: isSoldOut
-                                        ? Colors.red
-                                        : isLowStock
-                                        ? Colors.orange
-                                        : Colors.grey,
+                                    color: Colors.grey.shade600,
                                   ),
                                   const SizedBox(width: 4),
-                                  Text(
-                                    'Stock: $stock ${product.unit}',
-                                    style: theme.textTheme.bodySmall?.copyWith(
+                                  Flexible(
+                                    child: Text(
+                                      product.sku!,
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            fontFamily: 'monospace',
+                                            color: Colors.grey.shade700,
+                                          ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                                if (product.category != null ||
+                                    product.brand != null) ...[
+                                  if (product.sku != null &&
+                                      (product.sku ?? '').isNotEmpty)
+                                    const SizedBox(width: 12),
+                                  Flexible(
+                                    child: Text(
+                                      [
+                                        if (product.category != null)
+                                          product.category!.name,
+                                        if (product.brand != null)
+                                          product.brand!.name,
+                                      ].join(' • '),
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: Colors.grey.shade700,
+                                          ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Text(
+                                  '₹${product.sellingPrice.toStringAsFixed(2)}',
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    color: Colors.green,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '• ${product.unit}',
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                                if (product.gstRate > 0) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.withValues(
+                                        alpha: 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      'GST ${product.gstRate}%',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: Colors.orange,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            // Show stock quantity
+                            FutureBuilder<int>(
+                              future: _getProductStockQuantity(product.id),
+                              builder: (context, snapshot) {
+                                final stock = snapshot.data ?? 0;
+                                final isLowStock =
+                                    product.minStock > 0 &&
+                                    stock <= product.minStock;
+                                final isSoldOut = stock == 0;
+
+                                return Row(
+                                  children: [
+                                    Icon(
+                                      isSoldOut
+                                          ? Icons.report_gmailerrorred_outlined
+                                          : Icons.inventory_outlined,
+                                      size: 14,
                                       color: isSoldOut
                                           ? Colors.red
                                           : isLowStock
                                           ? Colors.orange
-                                          : null,
-                                      fontWeight: (isLowStock || isSoldOut)
-                                          ? FontWeight.w600
-                                          : null,
+                                          : Colors.grey,
                                     ),
-                                  ),
-                                  if (isLowStock && !isSoldOut) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.orange.withValues(
-                                          alpha: 0.1,
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      'Stock: $stock ${product.unit}',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: isSoldOut
+                                                ? Colors.red
+                                                : isLowStock
+                                                ? Colors.orange
+                                                : null,
+                                            fontWeight:
+                                                (isLowStock || isSoldOut)
+                                                ? FontWeight.w600
+                                                : null,
+                                          ),
+                                    ),
+                                    if (isLowStock && !isSoldOut) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
                                         ),
-                                        borderRadius: BorderRadius.circular(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.orange.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Low Stock',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: Colors.orange,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
                                       ),
-                                      child: Text(
-                                        'Low Stock',
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: Colors.orange,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                    ],
+                                    if (isSoldOut) ...[
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          'Sold Out',
+                                          style: theme.textTheme.bodySmall
+                                              ?.copyWith(
+                                                color: Colors.red,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                );
+                              },
+                            ),
+                            // Actions row
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                PopupMenuButton(
+                                  itemBuilder: (context) => [
+                                    const PopupMenuItem(
+                                      value: 'view',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.visibility_outlined,
+                                            size: 20,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text('View Details'),
+                                        ],
+                                      ),
+                                    ),
+                                    const PopupMenuItem(
+                                      value: 'stock',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.inventory_outlined,
+                                            size: 20,
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text('Manage Stock'),
+                                        ],
                                       ),
                                     ),
                                   ],
-                                  if (isSoldOut) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.red.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'Sold Out',
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                              color: Colors.red,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              );
-                            },
-                          ),
-                          // Actions row
-                          const SizedBox(height: 12),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              PopupMenuButton(
-                                itemBuilder: (context) => [
-                                  const PopupMenuItem(
-                                    value: 'view',
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.visibility_outlined,
-                                          size: 20,
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text('View Details'),
-                                      ],
-                                    ),
-                                  ),
-                                  const PopupMenuItem(
-                                    value: 'stock',
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.inventory_outlined,
-                                          size: 20,
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text('Manage Stock'),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                                onSelected: (value) {
-                                  if (value == 'view') {
-                                    _showProductDetails(context, product);
-                                  } else if (value == 'stock') {
-                                    _showManageStockSheet(context, product);
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+                                  onSelected: (value) {
+                                    if (value == 'view') {
+                                      _showProductDetails(context, product);
+                                    } else if (value == 'stock') {
+                                      _showManageStockSheet(context, product);
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -525,7 +552,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
   Future<int> _getProductStockQuantity(String productId) async {
     final authController = Get.find<AuthController>();
     final user = authController.currentUser.value;
-    
+
     String? branchId;
     if (user?.role.value == 'tenant_owner') {
       // For tenant owners, use selected branch
@@ -541,8 +568,11 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
       // For branch users, use their branch
       branchId = authController.branchId;
     }
-    
-    return await stockController.getProductStockQuantity(productId, branchId: branchId);
+
+    return await stockController.getProductStockQuantity(
+      productId,
+      branchId: branchId,
+    );
   }
 
   /// Calculate product statistics
@@ -554,7 +584,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
     final authController = Get.find<AuthController>();
     final user = authController.currentUser.value;
     String? targetBranchId;
-    
+
     if (user?.role.value == 'tenant_owner') {
       try {
         if (Get.isRegistered<BranchStoreController>()) {
@@ -594,7 +624,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
       } else if (product.minStock > 0 && quantity <= product.minStock) {
         lowStockProducts++;
       }
-      
+
       // Count as active only if effectively active (stock > 0 and isActive)
       if (effectiveIsActive) {
         activeProducts++;
@@ -1223,10 +1253,10 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                         'Serial Number Tracking',
                                         style: theme.textTheme.bodySmall
                                             ?.copyWith(
-                                          color: Colors.purple.shade600,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                              color: Colors.purple.shade600,
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                       ),
                                     ],
                                   ),
@@ -1272,42 +1302,43 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                           branch['name'] ?? '',
                                           style: theme.textTheme.bodyLarge
                                               ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            color: Colors.blue.shade900,
-                                          ),
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.blue.shade900,
+                                              ),
                                         ),
                                       ),
                                       if (branch['is_main'] == true) ...[
-                                    const SizedBox(width: 8),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
-                                        vertical: 2,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: Colors.yellow.shade100,
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      child: Text(
-                                        'Main',
-                                        style: theme.textTheme.bodySmall
-                                            ?.copyWith(
-                                          color: Colors.yellow.shade800,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 8,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.yellow.shade100,
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                          child: Text(
+                                            'Main',
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: Colors.yellow.shade800,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
                               ],
                             );
                           },
                         ),
-                      ]
-                      else if (user?.role.value == 'tenant_owner')
+                      ] else if (user?.role.value == 'tenant_owner')
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
@@ -1372,17 +1403,20 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                                 : () {
                                                     final decrementAmount =
                                                         int.tryParse(
-                                                                adjustmentAmountController
-                                                                    .text) ??
-                                                            1;
+                                                          adjustmentAmountController
+                                                              .text,
+                                                        ) ??
+                                                        1;
                                                     setModalState(() {
-                                                      adjustedQuantity = (adjustedQuantity -
-                                                              decrementAmount)
-                                                          .clamp(0, 999999);
+                                                      adjustedQuantity =
+                                                          (adjustedQuantity -
+                                                                  decrementAmount)
+                                                              .clamp(0, 999999);
                                                     });
                                                   },
-                                            borderRadius:
-                                                BorderRadius.circular(30),
+                                            borderRadius: BorderRadius.circular(
+                                              30,
+                                            ),
                                             child: Container(
                                               width: 48,
                                               height: 48,
@@ -1400,8 +1434,9 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                                 size: 20,
                                                 color: adjustedQuantity <= 0
                                                     ? Colors.grey.shade400
-                                                    : theme.colorScheme
-                                                        .onSurface,
+                                                    : theme
+                                                          .colorScheme
+                                                          .onSurface,
                                               ),
                                             ),
                                           ),
@@ -1413,33 +1448,37 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                           children: [
                                             Text(
                                               adjustedQuantity.toString(),
-                                              style: theme.textTheme
-                                                  .displaySmall?.copyWith(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 32,
-                                              ),
+                                              style: theme
+                                                  .textTheme
+                                                  .displaySmall
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                    fontSize: 32,
+                                                  ),
                                             ),
                                             const SizedBox(height: 4),
                                             Text(
                                               product.unit,
                                               style: theme.textTheme.bodySmall
                                                   ?.copyWith(
-                                                color: Colors.grey.shade600,
-                                                fontSize: 14,
-                                              ),
+                                                    color: Colors.grey.shade600,
+                                                    fontSize: 14,
+                                                  ),
                                             ),
                                             if (adjustedQuantity !=
                                                 currentQuantity) ...[
                                               const SizedBox(height: 4),
                                               Text(
-                                                adjustedQuantity > currentQuantity
+                                                adjustedQuantity >
+                                                        currentQuantity
                                                     ? '+${adjustedQuantity - currentQuantity} from $currentQuantity'
                                                     : '${adjustedQuantity - currentQuantity} from $currentQuantity',
                                                 style: theme.textTheme.bodySmall
                                                     ?.copyWith(
-                                                  color: Colors.blue.shade600,
-                                                  fontSize: 12,
-                                                ),
+                                                      color:
+                                                          Colors.blue.shade600,
+                                                      fontSize: 12,
+                                                    ),
                                               ),
                                             ],
                                           ],
@@ -1455,17 +1494,19 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                                 : () {
                                                     final incrementAmount =
                                                         int.tryParse(
-                                                                adjustmentAmountController
-                                                                    .text) ??
-                                                            1;
+                                                          adjustmentAmountController
+                                                              .text,
+                                                        ) ??
+                                                        1;
                                                     setModalState(() {
                                                       adjustedQuantity =
                                                           adjustedQuantity +
-                                                              incrementAmount;
+                                                          incrementAmount;
                                                     });
                                                   },
-                                            borderRadius:
-                                                BorderRadius.circular(30),
+                                            borderRadius: BorderRadius.circular(
+                                              30,
+                                            ),
                                             child: Container(
                                               width: 48,
                                               height: 48,
@@ -1481,8 +1522,8 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                               child: Icon(
                                                 Icons.add,
                                                 size: 20,
-                                                color: theme
-                                                    .colorScheme.onSurface,
+                                                color:
+                                                    theme.colorScheme.onSurface,
                                               ),
                                             ),
                                           ),
@@ -1501,19 +1542,20 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                           'Adjustment Amount',
                                           style: theme.textTheme.bodySmall
                                               ?.copyWith(
-                                            color: Colors.grey.shade500,
-                                            fontSize: 12,
-                                          ),
+                                                color: Colors.grey.shade500,
+                                                fontSize: 12,
+                                              ),
                                         ),
                                         const SizedBox(height: 4),
                                         TextField(
-                                          controller: adjustmentAmountController,
+                                          controller:
+                                              adjustmentAmountController,
                                           keyboardType: TextInputType.number,
                                           textAlign: TextAlign.center,
                                           style: theme.textTheme.bodyLarge
                                               ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                          ),
+                                                fontWeight: FontWeight.w600,
+                                              ),
                                           decoration: InputDecoration(
                                             border: OutlineInputBorder(
                                               borderRadius:
@@ -1521,9 +1563,9 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                             ),
                                             contentPadding:
                                                 const EdgeInsets.symmetric(
-                                              horizontal: 12,
-                                              vertical: 10,
-                                            ),
+                                                  horizontal: 12,
+                                                  vertical: 10,
+                                                ),
                                             hintText: '1',
                                           ),
                                         ),
@@ -1533,9 +1575,9 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                             'Amount to add/subtract per click',
                                             style: theme.textTheme.bodySmall
                                                 ?.copyWith(
-                                              color: Colors.grey.shade400,
-                                              fontSize: 12,
-                                            ),
+                                                  color: Colors.grey.shade400,
+                                                  fontSize: 12,
+                                                ),
                                           ),
                                         ),
                                       ],
@@ -1566,18 +1608,21 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: product.stockTrackingType ==
+                            child:
+                                product.stockTrackingType ==
                                     StockTrackingType.quantity
                                 ? FutureBuilder<int>(
-                                    future:
-                                        _getProductStockQuantity(product.id),
+                                    future: _getProductStockQuantity(
+                                      product.id,
+                                    ),
                                     builder: (context, snapshot) {
                                       final currentQty = snapshot.data ?? 0;
                                       final difference =
                                           adjustedQuantity - currentQty;
 
                                       return ElevatedButton(
-                                        onPressed: (branchId == null ||
+                                        onPressed:
+                                            (branchId == null ||
                                                 difference == 0 ||
                                                 adjustedQuantity < 0 ||
                                                 isSaving)
@@ -1611,19 +1656,21 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
 
                                                 try {
                                                   final stockController =
-                                                      Get.find<StockController>();
+                                                      Get.find<
+                                                        StockController
+                                                      >();
 
                                                   bool success = false;
                                                   if (difference > 0) {
                                                     // Stock In
                                                     success = await stockController
                                                         .addStockIn(
-                                                      productId: product.id,
-                                                      quantity: difference,
-                                                      reason:
-                                                          'Stock adjustment from products page',
-                                                      branchId: branchId,
-                                                    );
+                                                          productId: product.id,
+                                                          quantity: difference,
+                                                          reason:
+                                                              'Stock adjustment from products page',
+                                                          branchId: branchId,
+                                                        );
                                                   } else {
                                                     // Stock Out
                                                     if (adjustedQuantity < 0) {
@@ -1634,18 +1681,20 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                                         'Error',
                                                         'Stock cannot be negative',
                                                         snackPosition:
-                                                            SnackPosition.BOTTOM,
+                                                            SnackPosition
+                                                                .BOTTOM,
                                                       );
                                                       return;
                                                     }
                                                     success = await stockController
                                                         .addStockOut(
-                                                      productId: product.id,
-                                                      quantity: difference.abs(),
-                                                      reason:
-                                                          'Stock adjustment from products page',
-                                                      branchId: branchId,
-                                                    );
+                                                          productId: product.id,
+                                                          quantity: difference
+                                                              .abs(),
+                                                          reason:
+                                                              'Stock adjustment from products page',
+                                                          branchId: branchId,
+                                                        );
                                                   }
 
                                                   if (success) {
@@ -1654,8 +1703,8 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                                         .loadProducts();
                                                     await stockController
                                                         .loadCurrentStock(
-                                                      branchId: branchId,
-                                                    );
+                                                          branchId: branchId,
+                                                        );
                                                     Navigator.of(ctx).pop();
                                                   } else {
                                                     // Reset loading state on error
@@ -1685,7 +1734,8 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                                   strokeWidth: 2,
                                                   valueColor:
                                                       AlwaysStoppedAnimation<
-                                                          Color>(Colors.white),
+                                                        Color
+                                                      >(Colors.white),
                                                 ),
                                               )
                                             : const Text('Save'),
@@ -1717,64 +1767,502 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
     );
   }
 
-  void _showProductDetails(BuildContext context, product) {
+  void _showProductDetails(BuildContext context, dynamic product) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
+        initialChildSize: 0.9,
         minChildSize: 0.5,
         maxChildSize: 0.95,
         expand: false,
-        builder: (context, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(24),
+        builder: (context, scrollController) => Container(
+          decoration: BoxDecoration(
+            color: isDark ? theme.colorScheme.surface : Colors.grey.shade50,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey[300],
-                    borderRadius: BorderRadius.circular(2),
+              // Handle bar
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              // Header
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: theme.primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        Icons.shopping_bag_outlined,
+                        color: theme.primaryColor,
+                        size: 28,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            product.name,
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          if (product.sku != null && product.sku!.isNotEmpty)
+                            Text(
+                              'SKU: ${product.sku}',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: Colors.grey.shade600,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+              ),
+              // Content
+              Expanded(
+                child: SingleChildScrollView(
+                  controller: scrollController,
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Stock Information Card
+                      FutureBuilder<int>(
+                        future: _getProductStockQuantity(product.id),
+                        builder: (context, snapshot) {
+                          final stock = snapshot.data ?? 0;
+                          final isLowStock =
+                              product.minStock > 0 && stock <= product.minStock;
+                          final isSoldOut = stock == 0;
+
+                          return Card(
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                color: isSoldOut
+                                    ? Colors.red.shade300
+                                    : isLowStock
+                                    ? Colors.orange.shade300
+                                    : Colors.grey.shade300,
+                                width: 1.5,
+                              ),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.inventory_2_outlined,
+                                        color: isSoldOut
+                                            ? Colors.red
+                                            : isLowStock
+                                            ? Colors.orange
+                                            : theme.primaryColor,
+                                        size: 20,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        'Stock Information',
+                                        style: theme.textTheme.titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Current Stock',
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '$stock ${product.unit}',
+                                            style: theme.textTheme.headlineSmall
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isSoldOut
+                                                      ? Colors.red
+                                                      : isLowStock
+                                                      ? Colors.orange
+                                                      : theme.primaryColor,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                      Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.end,
+                                        children: [
+                                          Text(
+                                            'Min Stock',
+                                            style: theme.textTheme.bodySmall
+                                                ?.copyWith(
+                                                  color: Colors.grey.shade600,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${product.minStock} ${product.unit}',
+                                            style: theme.textTheme.titleMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                  if (isLowStock || isSoldOut) ...[
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            (isSoldOut
+                                                    ? Colors.red
+                                                    : Colors.orange)
+                                                .withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            isSoldOut
+                                                ? Icons.error_outline
+                                                : Icons.warning_amber_rounded,
+                                            color: isSoldOut
+                                                ? Colors.red
+                                                : Colors.orange,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              isSoldOut
+                                                  ? 'Product is out of stock'
+                                                  : 'Stock is below minimum threshold',
+                                              style: theme.textTheme.bodySmall
+                                                  ?.copyWith(
+                                                    color: isSoldOut
+                                                        ? Colors.red
+                                                        : Colors.orange,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Basic Information Card
+                      Card(
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: Colors.grey.shade300,
+                            width: 1,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.info_outline,
+                                    color: theme.primaryColor,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Basic Information',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              _buildDetailRow(
+                                theme,
+                                'Unit',
+                                product.unit,
+                                Icons.straighten,
+                              ),
+                              const Divider(height: 24),
+                              if (product.category != null)
+                                _buildDetailRow(
+                                  theme,
+                                  'Category',
+                                  product.category!.name,
+                                  Icons.category_outlined,
+                                ),
+                              if (product.category != null)
+                                const Divider(height: 24),
+                              if (product.brand != null)
+                                _buildDetailRow(
+                                  theme,
+                                  'Brand',
+                                  product.brand!.name,
+                                  Icons.branding_watermark_outlined,
+                                ),
+                              if (product.brand != null)
+                                const Divider(height: 24),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.toggle_on,
+                                    color: product.isActive
+                                        ? Colors.green
+                                        : Colors.grey,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Status',
+                                      style: theme.textTheme.bodyMedium
+                                          ?.copyWith(
+                                            color: Colors.grey.shade700,
+                                          ),
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          (product.isActive
+                                                  ? Colors.green
+                                                  : Colors.grey)
+                                              .withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      product.isActive ? 'Active' : 'Inactive',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(
+                                            color: product.isActive
+                                                ? Colors.green
+                                                : Colors.grey,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Pricing Information Card
+                      Card(
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
+                            color: Colors.grey.shade300,
+                            width: 1,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.currency_rupee_outlined,
+                                    color: theme.primaryColor,
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Pricing Information',
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(fontWeight: FontWeight.w600),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              _buildDetailRow(
+                                theme,
+                                'Selling Price',
+                                '₹${product.sellingPrice.toStringAsFixed(2)}',
+                                Icons.sell_outlined,
+                                Colors.green,
+                              ),
+                              const Divider(height: 24),
+                              _buildDetailRow(
+                                theme,
+                                'Purchase Price',
+                                '₹${(product.purchasePrice ?? 0).toStringAsFixed(2)}',
+                                Icons.shopping_cart_outlined,
+                              ),
+                              const Divider(height: 24),
+                              _buildDetailRow(
+                                theme,
+                                'GST Rate',
+                                '${product.gstRate}%',
+                                Icons.receipt_long_outlined,
+                                Colors.orange,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Description Card
+                      if (product.description != null &&
+                          product.description!.isNotEmpty)
+                        Card(
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            side: BorderSide(
+                              color: Colors.grey.shade300,
+                              width: 1,
+                            ),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.description_outlined,
+                                      color: theme.primaryColor,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Description',
+                                      style: theme.textTheme.titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  product.description!,
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      const SizedBox(height: 20),
+
+                      // Action Buttons
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                Get.toNamed(
+                                  AppRoutes.editProduct,
+                                  parameters: {'id': product.id},
+                                );
+                              },
+                              icon: const Icon(Icons.edit_outlined),
+                              label: const Text('Edit Product'),
+                              style: OutlinedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                                _showManageStockSheet(context, product);
+                              },
+                              icon: const Icon(Icons.inventory_outlined),
+                              label: const Text('Manage Stock'),
+                              style: ElevatedButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                    ],
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
-              Text(product.name, style: theme.textTheme.headlineMedium),
-              const SizedBox(height: 16),
-              _buildDetailRow('SKU', product.sku ?? 'N/A'),
-              _buildDetailRow('Unit', product.unit),
-              _buildDetailRow('Selling Price', '₹${product.sellingPrice}'),
-              _buildDetailRow(
-                'Purchase Price',
-                '₹${product.purchasePrice ?? 0}',
-              ),
-              _buildDetailRow('GST Rate', '${product.gstRate}%'),
-              _buildDetailRow('Min Stock', '${product.minStock}'),
-              if (product.category != null)
-                _buildDetailRow('Category', product.category!.name),
-              if (product.brand != null)
-                _buildDetailRow('Brand', product.brand!.name),
-              if (product.description != null &&
-                  product.description!.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Text(
-                  'Description',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(product.description!, style: theme.textTheme.bodyMedium),
-              ],
             ],
           ),
         ),
@@ -1782,19 +2270,36 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
     );
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 14)),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-          ),
+  Widget _buildDetailRow(
+    ThemeData theme,
+    String label,
+    String value, [
+    IconData? icon,
+    Color? valueColor,
+  ]) {
+    final effectiveValueColor = valueColor ?? theme.textTheme.bodyMedium?.color;
+    return Row(
+      children: [
+        if (icon != null) ...[
+          Icon(icon, size: 18, color: Colors.grey.shade600),
+          const SizedBox(width: 8),
         ],
-      ),
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.grey.shade700,
+            ),
+          ),
+        ),
+        Text(
+          value,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: effectiveValueColor,
+          ),
+        ),
+      ],
     );
   }
 }
