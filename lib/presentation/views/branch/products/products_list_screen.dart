@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../../core/routes/app_routes.dart';
+import '../../../controllers/auth_controller.dart';
+import '../../../controllers/branch_store_controller.dart';
 import '../../../controllers/product_controller.dart';
 import '../../../controllers/stock_controller.dart';
 
@@ -24,8 +26,50 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
   @override
   void initState() {
     super.initState();
-    // Ensure stock is loaded for statistics
-    stockController.loadCurrentStock();
+    // Load stock for the appropriate branch
+    _loadStockForCurrentBranch();
+    
+    // Listen to branch changes for tenant owners
+    final authController = Get.find<AuthController>();
+    final user = authController.currentUser.value;
+    if (user?.role.value == 'tenant_owner') {
+      try {
+        if (Get.isRegistered<BranchStoreController>()) {
+          final branchStore = Get.find<BranchStoreController>();
+          // Reload stock when branch changes
+          ever(branchStore.selectedBranchId, (branchId) {
+            if (branchId != null) {
+              _loadStockForCurrentBranch();
+            }
+          });
+        }
+      } catch (_) {
+        // BranchStoreController not available
+      }
+    }
+  }
+
+  Future<void> _loadStockForCurrentBranch() async {
+    final authController = Get.find<AuthController>();
+    final user = authController.currentUser.value;
+    
+    String? branchId;
+    if (user?.role.value == 'tenant_owner') {
+      // For tenant owners, use selected branch
+      try {
+        if (Get.isRegistered<BranchStoreController>()) {
+          final branchStore = Get.find<BranchStoreController>();
+          branchId = branchStore.selectedBranchId.value;
+        }
+      } catch (_) {
+        // BranchStoreController not available
+      }
+    } else {
+      // For branch users, use their branch
+      branchId = authController.branchId;
+    }
+    
+    await stockController.loadCurrentStock(branchId: branchId);
   }
 
   @override
@@ -73,7 +117,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
           return RefreshIndicator(
             onRefresh: () async {
               await productController.loadProducts();
-              await stockController.loadCurrentStock();
+              await _loadStockForCurrentBranch();
             },
             child: ListView(
               padding: const EdgeInsets.all(16),
@@ -165,9 +209,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                           const SizedBox(width: 8),
                           // Active/Inactive Toggle Switch at top right
                           FutureBuilder<int>(
-                            future: stockController.getProductStockQuantity(
-                              product.id,
-                            ),
+                            future: _getProductStockQuantity(product.id),
                             builder: (context, stockSnapshot) {
                               final stock = stockSnapshot.data ?? 0;
                               final canActivate = stock > 0 || product.isActive;
@@ -294,9 +336,7 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                           const SizedBox(height: 4),
                           // Show stock quantity
                           FutureBuilder<int>(
-                            future: stockController.getProductStockQuantity(
-                              product.id,
-                            ),
+                            future: _getProductStockQuantity(product.id),
                             builder: (context, snapshot) {
                               final stock = snapshot.data ?? 0;
                               final isLowStock =
@@ -448,14 +488,61 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
     );
   }
 
+  /// Get stock quantity for a product (handles tenant owners with selected branch)
+  Future<int> _getProductStockQuantity(String productId) async {
+    final authController = Get.find<AuthController>();
+    final user = authController.currentUser.value;
+    
+    String? branchId;
+    if (user?.role.value == 'tenant_owner') {
+      // For tenant owners, use selected branch
+      try {
+        if (Get.isRegistered<BranchStoreController>()) {
+          final branchStore = Get.find<BranchStoreController>();
+          branchId = branchStore.selectedBranchId.value;
+        }
+      } catch (_) {
+        // BranchStoreController not available
+      }
+    } else {
+      // For branch users, use their branch
+      branchId = authController.branchId;
+    }
+    
+    return await stockController.getProductStockQuantity(productId, branchId: branchId);
+  }
+
   /// Calculate product statistics
   Map<String, int> _calculateStatistics() {
     final allProducts = productController.products;
     final stockMap = <String, int>{};
 
+    // Get the appropriate branch ID for filtering stock
+    final authController = Get.find<AuthController>();
+    final user = authController.currentUser.value;
+    String? targetBranchId;
+    
+    if (user?.role.value == 'tenant_owner') {
+      try {
+        if (Get.isRegistered<BranchStoreController>()) {
+          final branchStore = Get.find<BranchStoreController>();
+          targetBranchId = branchStore.selectedBranchId.value;
+        }
+      } catch (_) {
+        // BranchStoreController not available
+      }
+    } else {
+      targetBranchId = authController.branchId;
+    }
+
     // Create a map of productId -> quantity from current stock
+    // Filter by branch if we have a target branch
     for (final stock in stockController.currentStock) {
-      stockMap[stock.productId] = stock.quantity;
+      if (targetBranchId == null || stock.branchId == targetBranchId) {
+        // For tenant owners, only count stock from selected branch
+        // For branch users, only count their branch stock
+        stockMap[stock.productId] = stock.quantity;
+      }
     }
 
     int totalProducts = allProducts.length;

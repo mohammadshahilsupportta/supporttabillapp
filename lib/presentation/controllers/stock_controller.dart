@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../data/datasources/stock_datasource.dart';
 import '../../data/models/stock_model.dart';
 import 'auth_controller.dart';
+import 'branch_store_controller.dart';
 
 class StockController extends GetxController {
   final StockDataSource _dataSource = StockDataSource();
@@ -25,19 +26,33 @@ class StockController extends GetxController {
   }
 
   // Load current stock for the branch
-  Future<void> loadCurrentStock() async {
+  Future<void> loadCurrentStock({String? branchId}) async {
     try {
       isLoading.value = true;
       errorMessage.value = '';
 
       final authController = Get.find<AuthController>();
-      final branchId = authController.branchId;
+      final userBranchId = branchId ?? authController.branchId;
       final tenantId = authController.tenantId;
+      final user = authController.currentUser.value;
+
+      // For tenant owners, use selected branch from BranchStoreController
+      String? targetBranchId = userBranchId;
+      if (user?.role.value == 'tenant_owner' && userBranchId == null) {
+        try {
+          if (Get.isRegistered<BranchStoreController>()) {
+            final branchStore = Get.find<BranchStoreController>();
+            targetBranchId = branchStore.selectedBranchId.value;
+          }
+        } catch (_) {
+          // BranchStoreController not available
+        }
+      }
 
       // For branch users, load stock for their branch
-      if (branchId != null) {
+      if (targetBranchId != null) {
         currentStock.value = await _dataSource.getCurrentStockByBranch(
-          branchId,
+          targetBranchId,
         );
       }
       // For tenant owners without a specific branch, load stock from all branches
@@ -298,14 +313,27 @@ class StockController extends GetxController {
   }
 
   // Get stock for specific product
-  Future<int> getProductStockQuantity(String productId) async {
+  Future<int> getProductStockQuantity(String productId, {String? branchId}) async {
     try {
       final authController = Get.find<AuthController>();
-      final branchId = authController.branchId;
+      final user = authController.currentUser.value;
+      String? targetBranchId = branchId ?? authController.branchId;
 
-      if (branchId == null) return 0;
+      // For tenant owners, use selected branch from BranchStoreController
+      if (user?.role.value == 'tenant_owner' && targetBranchId == null) {
+        try {
+          if (Get.isRegistered<BranchStoreController>()) {
+            final branchStore = Get.find<BranchStoreController>();
+            targetBranchId = branchStore.selectedBranchId.value;
+          }
+        } catch (_) {
+          // BranchStoreController not available
+        }
+      }
 
-      final stock = await _dataSource.getProductStock(branchId, productId);
+      if (targetBranchId == null) return 0;
+
+      final stock = await _dataSource.getProductStock(targetBranchId, productId);
       return stock?.quantity ?? 0;
     } catch (e) {
       return 0;
