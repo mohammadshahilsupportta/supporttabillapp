@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import '../../../../core/routes/app_routes.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../controllers/branch_controller.dart';
+import '../../../controllers/branch_store_controller.dart';
 import '../../../controllers/dashboard_controller.dart';
+import '../../../widgets/branch_switcher.dart';
 
 class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key});
@@ -16,6 +18,7 @@ class OwnerDashboardScreen extends StatefulWidget {
 
 class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   int _selectedIndex = 0;
+  bool _controllersInitialized = false;
 
   final List<Widget> _screens = [
     const _DashboardTab(),
@@ -25,14 +28,76 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Initialize controllers immediately (not in post frame callback)
+    _initializeBranchControllers();
+  }
+
+  Future<void> _initializeBranchControllers() async {
+    if (_controllersInitialized) return;
+    
+    try {
+      // AuthController is registered permanently in main.dart
+      // Ensure other controllers exist  
+      if (!Get.isRegistered<BranchController>()) {
+        Get.put(BranchController());
+      }
+
+      if (!Get.isRegistered<BranchStoreController>()) {
+        Get.put(BranchStoreController());
+      }
+
+      if (!Get.isRegistered<DashboardController>()) {
+        Get.put(DashboardController());
+      }
+
+      final authController = Get.find<AuthController>();
+      final user = authController.currentUser.value;
+
+      if (user?.role.value == 'tenant_owner') {
+        // Load branches immediately
+        final branchController = Get.find<BranchController>();
+        if (branchController.branches.isEmpty && !branchController.isLoading.value) {
+          await branchController.loadBranches();
+        }
+        
+        // Auto-select main branch after branches are loaded
+        final branchStore = Get.find<BranchStoreController>();
+        await branchStore.autoSelectMainBranch();
+      }
+
+      _controllersInitialized = true;
+      
+      // Trigger rebuild if mounted
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      print('Error initializing branch controllers: $e');
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final authController = Get.find<AuthController>();
+    final user = authController.currentUser.value;
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_getTitle()),
+        title: Text(
+          _getTitle(),
+          overflow: TextOverflow.ellipsis,
+        ),
         elevation: 0,
         actions: [
+          // Branch switcher for tenant owners (only on dashboard tab)
+          if (_selectedIndex == 0 && user?.role.value == 'tenant_owner')
+            const Padding(
+              padding: EdgeInsets.only(right: 4),
+              child: BranchSwitcher(),
+            ),
           if (_selectedIndex == 1)
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -99,7 +164,13 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
     final theme = Theme.of(context);
 
     return InkWell(
-      onTap: () => setState(() => _selectedIndex = index),
+      onTap: () {
+        if (_selectedIndex != index) {
+          setState(() {
+            _selectedIndex = index;
+          });
+        }
+      },
       borderRadius: BorderRadius.circular(8),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -256,13 +327,85 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
 }
 
 // ============ COMPREHENSIVE DASHBOARD TAB ============
-class _DashboardTab extends StatelessWidget {
+class _DashboardTab extends StatefulWidget {
   const _DashboardTab();
+
+  @override
+  State<_DashboardTab> createState() => _DashboardTabState();
+}
+
+class _DashboardTabState extends State<_DashboardTab> {
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Only initialize once, and schedule after frame to avoid build conflicts
+    if (!_initialized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_initialized) {
+          _initializeBranchSelection();
+        }
+      });
+    }
+  }
+
+  Future<void> _initializeBranchSelection() async {
+    if (_initialized) return;
+    
+    try {
+      final authController = Get.find<AuthController>();
+      final user = authController.currentUser.value;
+
+      if (user?.role.value == 'tenant_owner') {
+        // Ensure controllers are initialized
+        if (!Get.isRegistered<BranchStoreController>() || 
+            !Get.isRegistered<BranchController>()) {
+          return;
+        }
+
+        final branchStore = Get.find<BranchStoreController>();
+        final branchController = Get.find<BranchController>();
+
+        // Only load branches if not already loaded
+        if (branchController.branches.isEmpty && !branchController.isLoading.value) {
+          await branchController.loadBranches();
+        }
+
+        // Auto-select main branch if not already selected
+        if (branchStore.selectedBranchId.value == null) {
+          await branchStore.autoSelectMainBranch();
+        }
+      }
+      
+      if (mounted) {
+        _initialized = true;
+      }
+    } catch (e) {
+      print('Error initializing branch selection: $e');
+      if (mounted) {
+        _initialized = true; // Mark as initialized even on error to prevent retries
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dc = Get.find<DashboardController>();
+    final authController = Get.find<AuthController>();
+    final user = authController.currentUser.value;
+
+    // Get current branch info
+    Map<String, dynamic>? currentBranch;
+    if (user?.role.value == 'tenant_owner') {
+      try {
+        final branchStore = Get.find<BranchStoreController>();
+        currentBranch = branchStore.currentBranch;
+      } catch (_) {
+        // BranchStoreController not initialized
+      }
+    }
 
     return RefreshIndicator(
       onRefresh: () => dc.refreshStats(),
@@ -272,6 +415,89 @@ class _DashboardTab extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ========== BRANCH INFO BANNER ==========
+            if (currentBranch != null && currentBranch.isNotEmpty) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.primaryColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: theme.primaryColor.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.store,
+                      color: theme.primaryColor,
+                      size: 24,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Text(
+                                'Viewing: ${currentBranch['name'] ?? 'Branch'}',
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: theme.primaryColor,
+                                ),
+                              ),
+                              if (currentBranch['is_main'] == true) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.orange.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    'Main Branch',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: Colors.orange.shade800,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'All data shown for this branch only',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: theme.primaryColor.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (dc.isLoading.value)
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            theme.primaryColor,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+
             // ========== PERIOD SELECTOR ==========
             Obx(
               () => Container(
@@ -433,6 +659,15 @@ class _DashboardTab extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
+            // ========== QUICK ACTIONS - Primary Focus ==========
+            Obx(() {
+              if (dc.isLoading.value || dc.totalSales.value == 0) {
+                return const SizedBox.shrink();
+              }
+              return _buildQuickActionsSection(context, dc);
+            }),
+            const SizedBox(height: 24),
+
             // ========== LOW STOCK ALERT ==========
             Obx(() {
               if (dc.lowStockCount.value == 0 && dc.soldOutCount.value == 0) {
@@ -458,6 +693,9 @@ class _DashboardTab extends StatelessWidget {
               if (dc.lowStockProducts.isEmpty) return const SizedBox.shrink();
               return _buildLowStockProductsSection(context, dc);
             }),
+
+            // ========== BRANCHES & STAFF SECTION ==========
+            Obx(() => _buildBranchesAndStaffSection(context, dc)),
 
             const SizedBox(height: 80), // Extra space for FAB
           ],
@@ -578,6 +816,270 @@ class _DashboardTab extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildQuickActionsSection(
+    BuildContext context,
+    DashboardController dc,
+  ) {
+    final theme = Theme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Quick Actions', style: theme.textTheme.titleLarge),
+        const SizedBox(height: 12),
+        Obx(
+          () => GridView.count(
+            crossAxisCount: 1,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 12,
+            childAspectRatio: 2.5,
+            children: [
+              // Sales & Billing Card
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.shopping_cart,
+                            color: Colors.green.shade600,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Sales & Billing',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  dc.formatCurrencyIndian(dc.totalSales.value),
+                                  style: theme.textTheme.headlineMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green.shade600,
+                                  ),
+                                ),
+                                Text(
+                                  '${dc.salesCount.value} bills this ${dc.periodDisplayName.toLowerCase()}',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Flexible(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.end,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: () => Get.toNamed(AppRoutes.productsList),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.green.shade600,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('View Products'),
+                                ),
+                                OutlinedButton(
+                                  onPressed: () => Get.toNamed(AppRoutes.createProduct),
+                                  child: const Text('Add Product'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Stock Management Card
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.inventory_2,
+                            color: Colors.blue.shade600,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Stock Management',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  dc.formatCurrencyIndian(dc.stockValue.value),
+                                  style: theme.textTheme.headlineMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.blue.shade600,
+                                  ),
+                                ),
+                                Text(
+                                  'Total stock value',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Flexible(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.end,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: () => Get.toNamed(AppRoutes.productsList),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue.shade600,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('View Catalogue'),
+                                ),
+                                OutlinedButton(
+                                  onPressed: () => Get.toNamed(AppRoutes.createProduct),
+                                  child: const Text('Add Product'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Profit & Expenses Card
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.trending_up,
+                            color: Colors.purple.shade600,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Profit & Expenses',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Flexible(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  dc.formatCurrencyIndian(dc.totalProfit.value),
+                                  style: theme.textTheme.headlineMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: dc.totalProfit.value >= 0
+                                        ? Colors.green.shade600
+                                        : Colors.red.shade600,
+                                  ),
+                                ),
+                                Text(
+                                  '${dc.profitMargin.value.toStringAsFixed(1)}% profit margin',
+                                  style: theme.textTheme.bodySmall?.copyWith(
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Flexible(
+                            child: Wrap(
+                              spacing: 8,
+                              runSpacing: 8,
+                              alignment: WrapAlignment.end,
+                              children: [
+                                ElevatedButton(
+                                  onPressed: () => Get.toNamed(AppRoutes.branchDetails),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.purple.shade600,
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  child: const Text('View Branches'),
+                                ),
+                                OutlinedButton(
+                                  onPressed: () => Get.toNamed(AppRoutes.branchCreate),
+                                  child: const Text('Add Branch'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -819,6 +1321,254 @@ class _DashboardTab extends StatelessWidget {
       ],
     );
   }
+
+  Widget _buildBranchesAndStaffSection(
+    BuildContext context,
+    DashboardController dc,
+  ) {
+    final theme = Theme.of(context);
+    BranchController? branchController;
+    AuthController? authController;
+    
+    try {
+      if (Get.isRegistered<BranchController>()) {
+        branchController = Get.find<BranchController>();
+      }
+    } catch (e) {
+      print('_buildBranchesAndStaffSection: BranchController error: $e');
+    }
+    
+    try {
+      if (Get.isRegistered<AuthController>()) {
+        authController = Get.find<AuthController>();
+      }
+    } catch (e) {
+      print('_buildBranchesAndStaffSection: AuthController error: $e');
+    }
+    
+    final tenantId = authController?.tenantId;
+    
+    if (branchController == null || authController == null) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 24),
+        Row(
+          children: [
+            // Branches Card
+            Expanded(
+              child: Card(
+                elevation: 1,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.store,
+                                  size: 18,
+                                  color: theme.primaryColor,
+                                ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    'Branches (${branchController.branches.length})',
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              // Switch to branches tab
+                              final parent = context.findAncestorStateOfType<_OwnerDashboardScreenState>();
+                              if (parent != null) {
+                                parent.setState(() {
+                                  parent._selectedIndex = 1;
+                                });
+                              }
+                            },
+                            child: const Text('View All'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (branchController.branches.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Text(
+                            'No branches yet',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.grey,
+                            ),
+                          ),
+                        )
+                      else
+                        ...branchController.branches.take(3).map((branch) {
+                          final isActive = branch['is_active'] == true;
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    branch['name'] ?? 'Unknown',
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isActive
+                                        ? Colors.green.shade100
+                                        : Colors.grey.shade100,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Text(
+                                    isActive ? 'Active' : 'Inactive',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: isActive
+                                          ? Colors.green.shade800
+                                          : Colors.grey.shade800,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            // Staff Card
+            Expanded(
+              child: Card(
+                elevation: 1,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.people,
+                                  size: 18,
+                                  color: theme.primaryColor,
+                                ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    'Staff (${dc.userCount.value})',
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () => Get.toNamed(AppRoutes.usersList),
+                            child: const Text('View All'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      if (dc.users.isEmpty)
+                        Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Text(
+                            'No staff members yet',
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: Colors.grey,
+                            ),
+                          ),
+                        )
+                      else
+                        ...dc.users
+                            .where((u) =>
+                                u['tenant_id'] == tenantId &&
+                                u['role'] != 'tenant_owner')
+                            .take(3)
+                            .map((member) {
+                              final isActive = member['is_active'] == true;
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        member['full_name'] ?? 'Unknown',
+                                        style: theme.textTheme.bodyMedium?.copyWith(
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: isActive
+                                            ? Colors.green.shade100
+                                            : Colors.grey.shade100,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        isActive ? 'Active' : 'Inactive',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: isActive
+                                              ? Colors.green.shade800
+                                              : Colors.grey.shade800,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
 }
 
 // ============ BRANCHES TAB ============
@@ -830,13 +1580,38 @@ class _BranchesTab extends StatefulWidget {
 }
 
 class _BranchesTabState extends State<_BranchesTab> {
-  final branchController = Get.put(BranchController());
+  BranchController? _branchController;
   String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
-    branchController.loadBranches();
+    // Initialize controller safely
+    try {
+      if (Get.isRegistered<BranchController>()) {
+        _branchController = Get.find<BranchController>();
+      } else {
+        _branchController = Get.put(BranchController());
+      }
+    } catch (e) {
+      print('_BranchesTab: Error getting BranchController: $e');
+    }
+    
+    // Defer loading to avoid build conflicts
+    // Only load if branches are empty and not already loading
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && 
+          _branchController != null && 
+          _branchController!.branches.isEmpty && 
+          !_branchController!.isLoading.value) {
+        // Use Future.microtask to ensure this runs after the current frame
+        Future.microtask(() {
+          if (mounted && _branchController != null) {
+            _branchController!.loadBranches();
+          }
+        });
+      }
+    });
   }
 
   @override
@@ -844,8 +1619,12 @@ class _BranchesTabState extends State<_BranchesTab> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    if (_branchController == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     return Obx(() {
-      if (branchController.isLoading.value) {
+      if (_branchController!.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
       }
 
@@ -853,7 +1632,9 @@ class _BranchesTabState extends State<_BranchesTab> {
 
       return RefreshIndicator(
         onRefresh: () async {
-          await branchController.loadBranches();
+          if (_branchController != null) {
+            await _branchController!.loadBranches();
+          }
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
@@ -923,7 +1704,7 @@ class _BranchesTabState extends State<_BranchesTab> {
                     context: context,
                     theme: theme,
                     title: 'Total',
-                    value: branchController.totalBranches.toString(),
+                    value: _branchController!.totalBranches.toString(),
                     icon: Icons.store_outlined,
                     color: Colors.blue,
                   ),
@@ -934,7 +1715,7 @@ class _BranchesTabState extends State<_BranchesTab> {
                     context: context,
                     theme: theme,
                     title: 'Active',
-                    value: branchController.activeBranches.toString(),
+                    value: _branchController!.activeBranches.toString(),
                     icon: Icons.check_circle_outline,
                     color: Colors.green,
                   ),
@@ -945,7 +1726,7 @@ class _BranchesTabState extends State<_BranchesTab> {
                     context: context,
                     theme: theme,
                     title: 'Inactive',
-                    value: branchController.inactiveBranches.toString(),
+                    value: _branchController!.inactiveBranches.toString(),
                     icon: Icons.cancel_outlined,
                     color: Colors.grey,
                   ),
@@ -1249,7 +2030,8 @@ class _BranchesTabState extends State<_BranchesTab> {
   }
 
   List<Map<String, dynamic>> _getFilteredBranches() {
-    final all = branchController.branches;
+    if (_branchController == null) return [];
+    final all = _branchController!.branches;
     final query = _searchQuery.trim().toLowerCase();
 
     if (query.isEmpty) return all;
@@ -1265,29 +2047,6 @@ class _BranchesTabState extends State<_BranchesTab> {
     }).toList();
   }
 
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: const TextStyle(color: Colors.grey, fontSize: 14),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // ============ REPORTS TAB ============

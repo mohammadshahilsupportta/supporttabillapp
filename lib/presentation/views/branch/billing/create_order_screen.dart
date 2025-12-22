@@ -26,11 +26,11 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   final _customerNameController = TextEditingController();
   final _customerPhoneController = TextEditingController();
 
-  final billingController = Get.find<BillingController>();
-  final productController = Get.find<ProductController>();
-  final customerController = Get.find<CustomerController>();
-  final stockController = Get.find<StockController>();
-  final authController = Get.find<AuthController>();
+  BillingController? _billingController;
+  ProductController? _productController;
+  CustomerController? _customerController;
+  StockController? _stockController;
+  AuthController? _authController;
 
   final SettingsDataSource _settingsDataSource = SettingsDataSource();
   final StockDataSource _stockDataSource = StockDataSource();
@@ -51,8 +51,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     _tabController = TabController(length: 2, vsync: this);
     _loadSettings();
     _loadStock();
-    customerController.loadCustomers();
-    productController.loadProducts();
+    if (_customerController != null) {
+      _customerController!.loadCustomers();
+    }
+    if (_productController != null) {
+      _productController!.loadProducts();
+    }
   }
 
   @override
@@ -70,8 +74,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   }
 
   Future<void> _loadSettings() async {
+    if (_authController == null) return;
     try {
-      final tenantId = authController.tenantId;
+      final tenantId = _authController!.tenantId;
       if (tenantId != null) {
         _settings = await _settingsDataSource.getSettings(tenantId);
       }
@@ -85,12 +90,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   }
 
   Future<void> _loadStock() async {
+    if (_authController == null || _stockController == null) return;
     try {
-      final branchId = authController.branchId;
+      final branchId = _authController!.branchId;
       if (branchId != null) {
-        await stockController.loadCurrentStock();
+        await _stockController!.loadCurrentStock();
         // Build stock map
-        for (var stock in stockController.currentStock) {
+        for (var stock in _stockController!.currentStock) {
           _productStock[stock.productId] = stock.quantity;
         }
       }
@@ -104,11 +110,12 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   }
 
   List<Product> get _filteredProducts {
+    if (_productController == null) return [];
     final query = _productSearchController.text.toLowerCase().trim();
     if (query.isEmpty) {
-      return productController.products.take(5).toList();
+      return _productController!.products.take(5).toList();
     }
-    return productController.products
+    return _productController!.products
         .where((p) =>
             p.name.toLowerCase().contains(query) ||
             (p.sku?.toLowerCase().contains(query) ?? false))
@@ -117,8 +124,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   }
 
   Map<String, dynamic>? get _selectedCustomer {
-    if (_selectedCustomerId == null) return null;
-    return customerController.customers.firstWhereOrNull(
+    if (_selectedCustomerId == null || _customerController == null) return null;
+    return _customerController!.customers.firstWhereOrNull(
       (c) => c['id'] == _selectedCustomerId,
     );
   }
@@ -173,7 +180,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   }
 
   Future<void> _addProductToCart(Product product) async {
-    final branchId = authController.branchId;
+    if (_authController == null) return;
+    final branchId = _authController!.branchId;
     if (branchId == null) {
       Get.snackbar('Error', 'Branch not selected');
       return;
@@ -308,7 +316,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
   }
 
   Future<void> _createOrder() async {
-    final branchId = authController.branchId;
+    if (_authController == null) return;
+    final branchId = _authController!.branchId;
     if (branchId == null) {
       Get.snackbar('Error', 'Branch not selected');
       return;
@@ -343,8 +352,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
       }
     }
 
+    if (_billingController == null) {
+      Get.snackbar('Error', 'Billing controller not available');
+      return;
+    }
+
     try {
-      billingController.isLoading.value = true;
+      _billingController!.isLoading.value = true;
 
       // Convert cart items to bill items
       final billItems = _cart.map((item) {
@@ -405,7 +419,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
               ? _customerPhoneController.text.trim() 
               : null);
 
-      await billingController.createBillWithItems(
+      await _billingController!.createBillWithItems(
         branchId: branchId,
         items: billItems,
         customerId: _selectedCustomerId,
@@ -446,7 +460,9 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     } catch (e) {
       Get.snackbar('Error', 'Failed to create order: ${e.toString()}');
     } finally {
-      billingController.isLoading.value = false;
+      if (_billingController != null) {
+        _billingController!.isLoading.value = false;
+      }
     }
   }
 
@@ -730,7 +746,13 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
           if (!compact) const SizedBox(height: 12),
           // Customer Dropdown
           Obx(() {
-            final customers = customerController.customers;
+            if (_customerController == null) {
+              return DropdownButtonFormField<String>(
+                items: const [],
+                onChanged: null,
+              );
+            }
+            final customers = _customerController!.customers;
             return DropdownButtonFormField<String>(
               value: _selectedCustomerId,
               decoration: InputDecoration(
@@ -874,7 +896,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                   ),
                   const SizedBox(width: 8),
                   Obx(() {
-                    final isLoading = customerController.isLoading.value;
+                    if (_customerController == null) {
+                      return const SizedBox.shrink();
+                    }
+                    final isLoading = _customerController!.isLoading.value;
                     return ElevatedButton(
                       onPressed: isLoading
                           ? null
@@ -883,7 +908,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                                 Get.snackbar('Error', 'Customer name is required');
                                 return;
                               }
-                              final success = await customerController.createCustomer(
+                              if (_customerController == null) return;
+                              final success = await _customerController!.createCustomer(
                                 name: nameController.text.trim(),
                                 phone: phoneController.text.trim().isEmpty
                                     ? null
@@ -914,7 +940,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
 
   Widget _buildProductsList(ThemeData theme, {required bool compact}) {
     return Obx(() {
-      if (productController.isLoading.value) {
+      if (_productController == null) {
+        return const Center(child: Text('Product controller not available'));
+      }
+      if (_productController!.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
       }
 
@@ -1192,7 +1221,8 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
                     width: double.infinity,
                     child: OutlinedButton.icon(
                       onPressed: () async {
-                        final branchId = authController.branchId;
+                        if (_authController == null) return;
+                        final branchId = _authController!.branchId;
                         if (branchId != null) {
                           await _showSerialSelectionDialog(item.product, branchId);
                         }
@@ -1440,7 +1470,10 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
 
   Widget _buildCreateOrderButton(ThemeData theme) {
     return Obx(() {
-      final isLoading = billingController.isLoading.value;
+      if (_billingController == null) {
+        return const SizedBox.shrink();
+      }
+      final isLoading = _billingController!.isLoading.value;
       return Container(
         padding: EdgeInsets.all(_isMobile ? 12 : 16),
         decoration: BoxDecoration(

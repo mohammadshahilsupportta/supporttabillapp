@@ -15,8 +15,8 @@ class CreatePurchaseScreen extends StatefulWidget {
 
 class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
   final _formKey = GlobalKey<FormState>();
-  final purchaseController = Get.find<PurchaseController>();
-  late final ProductController productController;
+  PurchaseController? _purchaseController;
+  ProductController? _productController;
 
   final _supplierController = TextEditingController();
   final _invoiceController = TextEditingController();
@@ -47,10 +47,19 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
   void initState() {
     super.initState();
     try {
-      productController = Get.find<ProductController>();
+      _purchaseController = Get.find<PurchaseController>();
     } catch (e) {
-      Get.put(ProductController());
-      productController = Get.find<ProductController>();
+      print('CreatePurchaseScreen: PurchaseController not found: $e');
+    }
+    try {
+      _productController = Get.find<ProductController>();
+    } catch (e) {
+      try {
+        Get.put(ProductController());
+        _productController = Get.find<ProductController>();
+      } catch (e2) {
+        print('CreatePurchaseScreen: ProductController not found: $e2');
+      }
     }
   }
 
@@ -76,7 +85,7 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => _AddItemBottomSheet(
-        products: productController.products,
+        products: _productController?.products ?? [],
         onAdd: (item) {
           setState(() {
             _items.add(item);
@@ -120,7 +129,11 @@ class _CreatePurchaseScreenState extends State<CreatePurchaseScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final success = await purchaseController.createPurchase(
+      if (_purchaseController == null) {
+        Get.snackbar('Error', 'Purchase controller not available');
+        return;
+      }
+      final success = await _purchaseController!.createPurchase(
         supplierName: _supplierController.text.trim(),
         invoiceNumber: _invoiceController.text.trim(),
         purchaseDate: _purchaseDate.toIso8601String().split('T')[0],

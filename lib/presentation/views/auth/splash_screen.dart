@@ -45,8 +45,8 @@ class _SplashScreenState extends State<SplashScreen>
     // Wait for animation to complete
     await Future.delayed(const Duration(seconds: 2));
 
-    // Check if user is already logged in
-    final authController = Get.put(AuthController());
+    // Get existing AuthController (registered in main.dart)
+    final authController = Get.find<AuthController>();
     await authController.checkAuthStatus();
 
     // If not authenticated, navigate to login

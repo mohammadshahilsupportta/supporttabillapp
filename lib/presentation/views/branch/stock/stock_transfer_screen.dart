@@ -16,10 +16,10 @@ class StockTransferScreen extends StatefulWidget {
 
 class _StockTransferScreenState extends State<StockTransferScreen> {
   final _formKey = GlobalKey<FormState>();
-  final stockController = Get.find<StockController>();
-  final productController = Get.find<ProductController>();
-  final branchController = Get.find<BranchController>();
-  final authController = Get.find<AuthController>();
+  StockController? _stockController;
+  ProductController? _productController;
+  BranchController? _branchController;
+  AuthController? _authController;
 
   String? _selectedProductId;
   String? _selectedToBranchId;
@@ -31,14 +31,35 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
   @override
   void initState() {
     super.initState();
+    try {
+      _stockController = Get.find<StockController>();
+    } catch (e) {
+      print('StockTransferScreen: StockController not found: $e');
+    }
+    try {
+      _productController = Get.find<ProductController>();
+    } catch (e) {
+      print('StockTransferScreen: ProductController not found: $e');
+    }
+    try {
+      _branchController = Get.find<BranchController>();
+    } catch (e) {
+      print('StockTransferScreen: BranchController not found: $e');
+    }
+    try {
+      _authController = Get.find<AuthController>();
+    } catch (e) {
+      print('StockTransferScreen: AuthController not found: $e');
+    }
+    
     // Check if product_id was passed as argument
     final args = Get.arguments as Map<String, dynamic>?;
     if (args != null && args['product_id'] != null) {
       _selectedProductId = args['product_id'];
     }
     // Load branches if not already loaded
-    if (branchController.branches.isEmpty) {
-      branchController.loadBranches();
+    if (_branchController != null && _branchController!.branches.isEmpty) {
+      _branchController!.loadBranches();
     }
   }
 
@@ -50,9 +71,9 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
   }
 
   Product? get _selectedProduct {
-    if (_selectedProductId == null) return null;
+    if (_selectedProductId == null || _productController == null) return null;
     try {
-      return productController.products.firstWhere(
+      return _productController!.products.firstWhere(
         (p) => p.id == _selectedProductId,
       );
     } catch (e) {
@@ -61,9 +82,9 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
   }
 
   int get _currentStock {
-    if (_selectedProductId == null) return 0;
+    if (_selectedProductId == null || _stockController == null) return 0;
     try {
-      final stockItem = stockController.currentStock.firstWhere(
+      final stockItem = _stockController!.currentStock.firstWhere(
         (s) => s.productId == _selectedProductId,
       );
       return stockItem.quantity;
@@ -73,10 +94,11 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
   }
 
   String? get _fromBranchName {
-    final branchId = authController.branchId;
+    if (_authController == null || _branchController == null) return null;
+    final branchId = _authController!.branchId;
     if (branchId == null) return null;
     try {
-      final branch = branchController.branches.firstWhere(
+      final branch = _branchController!.branches.firstWhere(
         (b) => b['id'] == branchId,
       );
       return branch['name'] as String?;
@@ -86,9 +108,9 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
   }
 
   String? get _toBranchName {
-    if (_selectedToBranchId == null) return null;
+    if (_selectedToBranchId == null || _branchController == null) return null;
     try {
-      final branch = branchController.branches.firstWhere(
+      final branch = _branchController!.branches.firstWhere(
         (b) => b['id'] == _selectedToBranchId,
       );
       return branch['name'] as String?;
@@ -98,8 +120,9 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
   }
 
   List<Map<String, dynamic>> get _availableBranches {
-    final currentBranchId = authController.branchId;
-    return branchController.branches
+    if (_authController == null || _branchController == null) return [];
+    final currentBranchId = _authController!.branchId;
+    return _branchController!.branches
         .where((b) =>
             b['id'] != currentBranchId && b['is_active'] == true)
         .toList();
@@ -128,7 +151,12 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
       return;
     }
 
-    final fromBranchId = authController.branchId;
+    if (_stockController == null || _authController == null) {
+      Get.snackbar('Error', 'Controllers not available');
+      return;
+    }
+
+    final fromBranchId = _authController!.branchId;
     if (fromBranchId == null) {
       Get.snackbar('Error', 'Source branch not found');
       return;
@@ -137,7 +165,7 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final success = await stockController.transferStock(
+      final success = await _stockController!.transferStock(
         fromBranchId: fromBranchId,
         toBranchId: _selectedToBranchId!,
         productId: _selectedProductId!,
@@ -186,11 +214,13 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
       ),
       body: Form(
         key: _formKey,
-        child: Obx(() {
-          if (productController.isLoading.value ||
-              branchController.isLoading.value) {
-            return const Center(child: CircularProgressIndicator());
-          }
+        child: _productController == null || _branchController == null
+            ? const Center(child: Text('Controllers not available'))
+            : Obx(() {
+                if (_productController!.isLoading.value ||
+                    _branchController!.isLoading.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -243,7 +273,7 @@ class _StockTransferScreenState extends State<StockTransferScreen> {
                           ),
                           prefixIcon: const Icon(Icons.inventory_2),
                         ),
-                        items: productController.products
+                        items: _productController!.products
                             .where((p) => p.isActive)
                             .map<DropdownMenuItem<String>>((product) {
                               return DropdownMenuItem<String>(

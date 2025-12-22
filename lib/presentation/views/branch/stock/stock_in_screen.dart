@@ -14,8 +14,8 @@ class StockInScreen extends StatefulWidget {
 
 class _StockInScreenState extends State<StockInScreen> {
   final _formKey = GlobalKey<FormState>();
-  final stockController = Get.find<StockController>();
-  final productController = Get.find<ProductController>();
+  StockController? _stockController;
+  ProductController? _productController;
 
   String? _selectedProductId;
   final _quantityController = TextEditingController(text: '1');
@@ -26,6 +26,17 @@ class _StockInScreenState extends State<StockInScreen> {
   @override
   void initState() {
     super.initState();
+    try {
+      _stockController = Get.find<StockController>();
+    } catch (e) {
+      print('StockInScreen: StockController not found: $e');
+    }
+    try {
+      _productController = Get.find<ProductController>();
+    } catch (e) {
+      print('StockInScreen: ProductController not found: $e');
+    }
+    
     // Check if product_id was passed as argument
     final args = Get.arguments as Map<String, dynamic>?;
     if (args != null && args['product_id'] != null) {
@@ -41,9 +52,9 @@ class _StockInScreenState extends State<StockInScreen> {
   }
 
   Product? get _selectedProduct {
-    if (_selectedProductId == null) return null;
+    if (_selectedProductId == null || _productController == null) return null;
     try {
-      return productController.products.firstWhere(
+      return _productController!.products.firstWhere(
         (p) => p.id == _selectedProductId,
       );
     } catch (e) {
@@ -52,9 +63,9 @@ class _StockInScreenState extends State<StockInScreen> {
   }
 
   int get _currentStock {
-    if (_selectedProductId == null) return 0;
+    if (_selectedProductId == null || _stockController == null) return 0;
     try {
-      final stockItem = stockController.currentStock.firstWhere(
+      final stockItem = _stockController!.currentStock.firstWhere(
         (s) => s.productId == _selectedProductId,
       );
       return stockItem.quantity;
@@ -70,12 +81,17 @@ class _StockInScreenState extends State<StockInScreen> {
       return;
     }
 
+    if (_stockController == null) {
+      Get.snackbar('Error', 'Stock controller not available');
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       final quantity = int.tryParse(_quantityController.text) ?? 0;
 
-      final success = await stockController.addStockIn(
+      final success = await _stockController!.addStockIn(
         productId: _selectedProductId!,
         quantity: quantity,
         reason: _reasonController.text.trim().isNotEmpty
@@ -119,10 +135,12 @@ class _StockInScreenState extends State<StockInScreen> {
       appBar: AppBar(title: const Text('Add Stock'), elevation: 0),
       body: Form(
         key: _formKey,
-        child: Obx(() {
-          if (productController.isLoading.value) {
-            return const Center(child: CircularProgressIndicator());
-          }
+        child: _productController == null
+            ? const Center(child: Text('Product controller not available'))
+            : Obx(() {
+                if (_productController!.isLoading.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -168,7 +186,7 @@ class _StockInScreenState extends State<StockInScreen> {
                           ),
                           prefixIcon: const Icon(Icons.inventory_2),
                         ),
-                        items: productController.products
+                        items: _productController!.products
                             .where((p) => p.isActive)
                             .map<DropdownMenuItem<String>>((product) {
                               return DropdownMenuItem<String>(

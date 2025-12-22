@@ -11,7 +11,16 @@ class BranchDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final branchController = Get.find<BranchController>();
+    BranchController? branchController;
+    try {
+      branchController = Get.find<BranchController>();
+    } catch (e) {
+      print('BranchDetailsScreen: BranchController not found: $e');
+      return Scaffold(
+        appBar: AppBar(title: const Text('Branch Details'), elevation: 0),
+        body: const Center(child: Text('Branch controller not available')),
+      );
+    }
     final Map<String, dynamic> initialBranch =
         Get.arguments as Map<String, dynamic>? ?? {};
     final String? branchId = initialBranch['id'] as String?;
@@ -21,7 +30,7 @@ class BranchDetailsScreen extends StatelessWidget {
       body: Obx(() {
         // Get updated branch data from controller, fallback to initial if not found
         Map<String, dynamic> branch = initialBranch;
-        if (branchId != null) {
+        if (branchId != null && branchController != null) {
           try {
             final updatedBranch = branchController.branches.firstWhere(
               (b) => (b['id'] as String?) == branchId,
@@ -383,7 +392,7 @@ class BranchDetailsScreen extends StatelessWidget {
                                         ),
                                       );
 
-                                      if (confirm == true) {
+                                      if (confirm == true && branchController != null) {
                                         final success = await branchController
                                             .deleteBranch(branch['id']);
                                         if (success) {

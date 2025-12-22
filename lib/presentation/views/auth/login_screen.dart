@@ -25,7 +25,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
-      final authController = Get.find<AuthController>();
+      AuthController? authController;
+      try {
+        authController = Get.find<AuthController>();
+      } catch (e) {
+        Get.snackbar('Error', 'Auth controller not available');
+        return;
+      }
 
       await authController.signIn(
         email: _emailController.text.trim(),
@@ -37,7 +43,19 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final authController = Get.find<AuthController>();
+    AuthController? authController;
+    try {
+      authController = Get.find<AuthController>();
+    } catch (e) {
+      print('LoginScreen: AuthController not found: $e');
+      return Scaffold(
+        body: SafeArea(
+          child: Center(
+            child: Text('Auth controller not available. Please restart the app.'),
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       body: SafeArea(
@@ -140,12 +158,12 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Login Button
                     Obx(
                       () => ElevatedButton(
-                        onPressed: authController.isLoading.value
+                        onPressed: (authController?.isLoading.value ?? false)
                             ? null
                             : _handleLogin,
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: authController.isLoading.value
+                          child: (authController?.isLoading.value ?? false)
                               ? const SizedBox(
                                   height: 20,
                                   width: 20,

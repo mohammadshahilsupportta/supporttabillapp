@@ -2,6 +2,7 @@ import 'package:get/get.dart';
 
 import '../../data/datasources/dashboard_datasource.dart';
 import 'auth_controller.dart';
+import 'branch_store_controller.dart';
 
 class DashboardController extends GetxController {
   final DashboardDataSource _dataSource = DashboardDataSource();
@@ -65,6 +66,20 @@ class DashboardController extends GetxController {
         loadStats();
       }
     });
+
+    // Listen to branch store changes (for tenant owners)
+    try {
+      final branchStore = Get.find<BranchStoreController>();
+      ever(branchStore.selectedBranchId, (branchId) {
+        final user = Get.find<AuthController>().currentUser.value;
+        if (user?.role.value == 'tenant_owner' && !isLoading.value) {
+          print('Branch changed to: $branchId, reloading stats...');
+          loadStats();
+        }
+      });
+    } catch (_) {
+      // BranchStoreController not initialized yet (not a tenant owner)
+    }
   }
 
   // Change period and reload stats
@@ -126,10 +141,21 @@ class DashboardController extends GetxController {
         throw Exception('Tenant ID not found');
       }
 
-      print('Loading tenant owner stats for: $tenantId');
+      // Get selected branch ID from branch store (if available)
+      String? selectedBranchId;
+      try {
+        final branchStore = Get.find<BranchStoreController>();
+        selectedBranchId = branchStore.selectedBranchId.value;
+      } catch (_) {
+        // BranchStoreController not initialized yet
+      }
 
-      // Load comprehensive dashboard stats
+      print('Loading tenant owner stats for: $tenantId');
+      print('Selected branch: $selectedBranchId');
+
+      // Load comprehensive dashboard stats (use selected branch if available)
       final stats = await _dataSource.getDashboardStats(
+        branchId: selectedBranchId, // Use selected branch for filtering
         tenantId: tenantId,
         period: selectedPeriod.value,
       );

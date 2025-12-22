@@ -14,7 +14,7 @@ class CreateProductScreen extends StatefulWidget {
 
 class _CreateProductScreenState extends State<CreateProductScreen> {
   final _formKey = GlobalKey<FormState>();
-  final productController = Get.find<ProductController>();
+  ProductController? _productController;
 
   final _nameController = TextEditingController();
   final _skuController = TextEditingController();
@@ -50,6 +50,16 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   final List<double> _gstRates = [0, 5, 12, 18, 28];
 
   @override
+  void initState() {
+    super.initState();
+    try {
+      _productController = Get.find<ProductController>();
+    } catch (e) {
+      print('CreateProductScreen: ProductController not found: $e');
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _skuController.dispose();
@@ -63,10 +73,15 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_productController == null) {
+      Get.snackbar('Error', 'Product controller not available');
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final success = await productController.createProductFromData(
+      final success = await _productController!.createProductFromData(
         name: _nameController.text.trim(),
         sku: _skuController.text.trim().isNotEmpty
             ? _skuController.text.trim()
@@ -255,7 +270,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                                 value: null,
                                 child: Text('No Category'),
                               ),
-                              ...productController.categories
+                              ...(_productController?.categories ?? [])
                                   .where((c) => c.isActive)
                                   .map(
                                     (c) => DropdownMenuItem<String>(
@@ -285,7 +300,7 @@ class _CreateProductScreenState extends State<CreateProductScreen> {
                                 value: null,
                                 child: Text('No Brand'),
                               ),
-                              ...productController.brands
+                              ...(_productController?.brands ?? [])
                                   .where((b) => b.isActive)
                                   .map(
                                     (b) => DropdownMenuItem<String>(

@@ -12,7 +12,7 @@ class EditBranchScreen extends StatefulWidget {
 
 class _EditBranchScreenState extends State<EditBranchScreen> {
   final _formKey = GlobalKey<FormState>();
-  final branchController = Get.find<BranchController>();
+  BranchController? _branchController;
 
   final _nameController = TextEditingController();
   final _codeController = TextEditingController();
@@ -26,6 +26,11 @@ class _EditBranchScreenState extends State<EditBranchScreen> {
   @override
   void initState() {
     super.initState();
+    try {
+      _branchController = Get.find<BranchController>();
+    } catch (e) {
+      print('EditBranchScreen: BranchController not found: $e');
+    }
     // Get branch data from arguments
     final Map<String, dynamic>? branch = Get.arguments as Map<String, dynamic>?;
     if (branch != null) {
@@ -53,7 +58,11 @@ class _EditBranchScreenState extends State<EditBranchScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await branchController.updateBranch(
+      if (_branchController == null) {
+        Get.snackbar('Error', 'Branch controller not available');
+        return;
+      }
+      await _branchController!.updateBranch(
         branchId: _branchId!,
         name: _nameController.text.trim(),
         code: _codeController.text.trim(),

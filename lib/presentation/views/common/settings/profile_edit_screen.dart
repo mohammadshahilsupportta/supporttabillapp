@@ -12,7 +12,7 @@ class ProfileEditScreen extends StatefulWidget {
 
 class _ProfileEditScreenState extends State<ProfileEditScreen> {
   final _formKey = GlobalKey<FormState>();
-  final authController = Get.find<AuthController>();
+  AuthController? _authController;
 
   late final TextEditingController _nameController;
   late final TextEditingController _phoneController;
@@ -22,7 +22,12 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   @override
   void initState() {
     super.initState();
-    final user = authController.currentUser.value;
+    try {
+      _authController = Get.find<AuthController>();
+    } catch (e) {
+      print('ProfileEditScreen: AuthController not found: $e');
+    }
+    final user = _authController?.currentUser.value;
     _nameController = TextEditingController(text: user?.fullName ?? '');
     _phoneController = TextEditingController(text: '');
   }
@@ -65,7 +70,7 @@ class _ProfileEditScreenState extends State<ProfileEditScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final user = authController.currentUser.value;
+    final user = _authController?.currentUser.value;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Edit Profile'), elevation: 0),

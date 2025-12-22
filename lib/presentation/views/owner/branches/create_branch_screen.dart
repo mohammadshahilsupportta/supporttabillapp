@@ -15,8 +15,8 @@ class CreateBranchScreen extends StatefulWidget {
 
 class _CreateBranchScreenState extends State<CreateBranchScreen> {
   final _formKey = GlobalKey<FormState>();
-  final branchController = Get.find<BranchController>();
-  final authController = Get.find<AuthController>();
+  BranchController? _branchController;
+  AuthController? _authController;
   final AuthDataSource _authDataSource = AuthDataSource();
 
   final _nameController = TextEditingController();
@@ -30,6 +30,21 @@ class _CreateBranchScreenState extends State<CreateBranchScreen> {
   bool _isLoading = false;
   bool _createAdmin = false;
   bool _isAdminPasswordObscured = true;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      _branchController = Get.find<BranchController>();
+    } catch (e) {
+      print('CreateBranchScreen: BranchController not found: $e');
+    }
+    try {
+      _authController = Get.find<AuthController>();
+    } catch (e) {
+      print('CreateBranchScreen: AuthController not found: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -46,10 +61,15 @@ class _CreateBranchScreenState extends State<CreateBranchScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_branchController == null) {
+      Get.snackbar('Error', 'Branch controller not available');
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      await branchController.createBranch(
+      await _branchController!.createBranch(
         name: _nameController.text.trim(),
         code: _codeController.text.trim(),
         address: _addressController.text.trim().isNotEmpty
@@ -61,8 +81,8 @@ class _CreateBranchScreenState extends State<CreateBranchScreen> {
       );
 
       // If requested, create branch admin account (match website logic)
-      if (_createAdmin) {
-        final tenantId = authController.tenantId;
+      if (_createAdmin && _authController != null) {
+        final tenantId = _authController!.tenantId;
         if (tenantId == null) {
           Get.snackbar(
             'Warning',
@@ -75,11 +95,15 @@ class _CreateBranchScreenState extends State<CreateBranchScreen> {
           // Find the created branch by code (most recent)
           Map<String, dynamic>? createdBranch;
           try {
-            createdBranch = branchController.branches.firstWhere(
-              (b) =>
-                  (b['code'] as String?) ==
-                  _codeController.text.trim().toUpperCase(),
-            );
+            if (_branchController == null) {
+              createdBranch = null;
+            } else {
+              createdBranch = _branchController!.branches.firstWhere(
+                (b) =>
+                    (b['code'] as String?) ==
+                    _codeController.text.trim().toUpperCase(),
+              );
+            }
           } catch (_) {
             createdBranch = null;
           }

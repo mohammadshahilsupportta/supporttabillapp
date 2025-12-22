@@ -1,3 +1,5 @@
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:get/get.dart';
 
 import '../../data/datasources/branch_datasource.dart';
@@ -13,7 +15,10 @@ class BranchController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    loadBranches();
+    // Schedule loadBranches after initialization to avoid build conflicts
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      loadBranches();
+    });
   }
 
   Future<void> loadBranches() async {
@@ -22,15 +27,38 @@ class BranchController extends GetxController {
 
       final tenantId = _authController.currentUser.value?.tenantId;
 
-      if (tenantId != null) {
-        branches.value = await _dataSource.getBranchesByTenant(tenantId);
+      final loadedBranches = tenantId != null
+          ? await _dataSource.getBranchesByTenant(tenantId)
+          : <Map<String, dynamic>>[];
+
+      // Update branches value after async operation completes
+      // Use WidgetsBinding to ensure this doesn't happen during build
+      if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+        branches.value = loadedBranches;
       } else {
-        branches.value = [];
+        // If we're in a build phase, defer the update
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          branches.value = loadedBranches;
+        });
       }
     } catch (e) {
       print('[BranchController] Error loading branches: $e');
+      // Set empty list on error to prevent null issues
+      if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+        branches.value = [];
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          branches.value = [];
+        });
+      }
     } finally {
-      isLoading.value = false;
+      if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.idle) {
+        isLoading.value = false;
+      } else {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          isLoading.value = false;
+        });
+      }
     }
   }
 

@@ -1,8 +1,8 @@
 import 'package:get/get.dart';
 
-import '../../presentation/controllers/auth_controller.dart';
 import '../../presentation/controllers/billing_controller.dart';
 import '../../presentation/controllers/branch_controller.dart';
+import '../../presentation/controllers/branch_store_controller.dart';
 import '../../presentation/controllers/customer_controller.dart';
 import '../../presentation/controllers/dashboard_controller.dart';
 import '../../presentation/controllers/expense_controller.dart';
@@ -106,7 +106,7 @@ class AppRoutes {
       name: login,
       page: () => const LoginScreen(),
       binding: BindingsBuilder(() {
-        Get.lazyPut<AuthController>(() => AuthController());
+        // AuthController is registered permanently in main.dart
       }),
     ),
 
@@ -115,7 +115,7 @@ class AppRoutes {
       name: superadminDashboard,
       page: () => const SuperadminDashboardScreen(),
       binding: BindingsBuilder(() {
-        Get.lazyPut<AuthController>(() => AuthController());
+        // AuthController is registered permanently in main.dart
         Get.lazyPut<DashboardController>(() => DashboardController());
       }),
     ),
@@ -139,8 +139,17 @@ class AppRoutes {
       name: ownerDashboard,
       page: () => const OwnerDashboardScreen(),
       binding: BindingsBuilder(() {
-        Get.lazyPut<AuthController>(() => AuthController());
-        Get.lazyPut<DashboardController>(() => DashboardController());
+        // AuthController is registered permanently in main.dart
+        // Register other critical controllers needed immediately
+        if (!Get.isRegistered<BranchController>()) {
+          Get.put<BranchController>(BranchController());
+        }
+        if (!Get.isRegistered<BranchStoreController>()) {
+          Get.put<BranchStoreController>(BranchStoreController());
+        }
+        if (!Get.isRegistered<DashboardController>()) {
+          Get.put<DashboardController>(DashboardController());
+        }
         Get.lazyPut<ProductController>(() => ProductController());
       }),
     ),
@@ -215,7 +224,7 @@ class AppRoutes {
       name: branchDashboard,
       page: () => const BranchDashboardScreen(),
       binding: BindingsBuilder(() {
-        Get.lazyPut<AuthController>(() => AuthController());
+        // AuthController is registered permanently in main.dart
         Get.lazyPut<DashboardController>(() => DashboardController());
         Get.lazyPut<BillingController>(() => BillingController());
       }),
@@ -226,7 +235,7 @@ class AppRoutes {
       name: billing,
       page: () => const BillingScreen(),
       binding: BindingsBuilder(() {
-        Get.lazyPut<AuthController>(() => AuthController());
+        // AuthController is registered permanently in main.dart
       }),
     ),
     GetPage(
@@ -378,14 +387,14 @@ class AppRoutes {
       name: settings,
       page: () => const SettingsScreen(),
       binding: BindingsBuilder(() {
-        Get.lazyPut<AuthController>(() => AuthController());
+        // AuthController is registered permanently in main.dart
       }),
     ),
     GetPage(
       name: profileEdit,
       page: () => const ProfileEditScreen(),
       binding: BindingsBuilder(() {
-        Get.lazyPut<AuthController>(() => AuthController());
+        // AuthController is registered permanently in main.dart
       }),
     ),
   ];

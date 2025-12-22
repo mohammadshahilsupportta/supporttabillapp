@@ -23,6 +23,7 @@ class AppConfig {
   static const String keyUserRole = 'user_role';
   static const String keyTenantId = 'tenant_id';
   static const String keyBranchId = 'branch_id';
+  static const String keySelectedBranchId = 'selected_branch_id'; // For tenant owner branch switching
   static const String keyThemeMode = 'theme_mode';
 
   // Date Formats

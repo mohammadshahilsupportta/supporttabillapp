@@ -10,7 +10,16 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final authController = Get.find<AuthController>();
+    AuthController? authController;
+    try {
+      authController = Get.find<AuthController>();
+    } catch (e) {
+      print('SettingsScreen: AuthController not found: $e');
+      return Scaffold(
+        appBar: AppBar(title: const Text('Settings'), elevation: 0),
+        body: const Center(child: Text('Auth controller not available')),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings'), elevation: 0),
@@ -19,6 +28,9 @@ class SettingsScreen extends StatelessWidget {
         children: [
           // Profile Card
           Obx(() {
+            if (authController == null) {
+              return const Card(child: Center(child: Text('Auth controller not available')));
+            }
             final user = authController.currentUser.value;
             return Card(
               child: Padding(
@@ -160,6 +172,9 @@ class SettingsScreen extends StatelessWidget {
 
           // Business Section (for owners)
           Obx(() {
+            if (authController == null) {
+              return const SizedBox.shrink();
+            }
             final role = authController.currentUser.value?.role.value;
             if (role == 'tenantOwner') {
               return Column(
@@ -244,7 +259,11 @@ class SettingsScreen extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              onTap: () => _confirmLogout(context, authController),
+              onTap: () {
+                if (authController != null) {
+                  _confirmLogout(context, authController);
+                }
+              },
             ),
           ),
           const SizedBox(height: 32),

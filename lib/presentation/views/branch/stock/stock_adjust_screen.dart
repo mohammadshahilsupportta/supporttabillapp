@@ -14,8 +14,8 @@ class StockAdjustScreen extends StatefulWidget {
 
 class _StockAdjustScreenState extends State<StockAdjustScreen> {
   final _formKey = GlobalKey<FormState>();
-  final stockController = Get.find<StockController>();
-  final productController = Get.find<ProductController>();
+  StockController? _stockController;
+  ProductController? _productController;
 
   String? _selectedProductId;
   final _newQuantityController = TextEditingController();
@@ -26,6 +26,17 @@ class _StockAdjustScreenState extends State<StockAdjustScreen> {
   @override
   void initState() {
     super.initState();
+    try {
+      _stockController = Get.find<StockController>();
+    } catch (e) {
+      print('StockAdjustScreen: StockController not found: $e');
+    }
+    try {
+      _productController = Get.find<ProductController>();
+    } catch (e) {
+      print('StockAdjustScreen: ProductController not found: $e');
+    }
+    
     // Check if product_id was passed as argument
     final args = Get.arguments as Map<String, dynamic>?;
     if (args != null && args['product_id'] != null) {
@@ -35,10 +46,14 @@ class _StockAdjustScreenState extends State<StockAdjustScreen> {
   }
 
   Future<void> _loadCurrentStock() async {
-    if (_selectedProductId != null) {
-      await stockController.loadCurrentStock();
-      final currentQty = _currentStock;
-      _newQuantityController.text = currentQty.toString();
+    if (_selectedProductId != null && _stockController != null) {
+      try {
+        await _stockController!.loadCurrentStock();
+        final currentQty = _currentStock;
+        _newQuantityController.text = currentQty.toString();
+      } catch (e) {
+        print('Error loading current stock: $e');
+      }
     }
   }
 
@@ -50,9 +65,9 @@ class _StockAdjustScreenState extends State<StockAdjustScreen> {
   }
 
   Product? get _selectedProduct {
-    if (_selectedProductId == null) return null;
+    if (_selectedProductId == null || _productController == null) return null;
     try {
-      return productController.products.firstWhere(
+      return _productController!.products.firstWhere(
         (p) => p.id == _selectedProductId,
       );
     } catch (e) {
@@ -61,9 +76,9 @@ class _StockAdjustScreenState extends State<StockAdjustScreen> {
   }
 
   int get _currentStock {
-    if (_selectedProductId == null) return 0;
+    if (_selectedProductId == null || _stockController == null) return 0;
     try {
-      final stockItem = stockController.currentStock.firstWhere(
+      final stockItem = _stockController!.currentStock.firstWhere(
         (s) => s.productId == _selectedProductId,
       );
       return stockItem.quantity;
@@ -101,10 +116,15 @@ class _StockAdjustScreenState extends State<StockAdjustScreen> {
       return;
     }
 
+    if (_stockController == null) {
+      Get.snackbar('Error', 'Stock controller not available');
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final success = await stockController.adjustStock(
+      final success = await _stockController!.adjustStock(
         productId: _selectedProductId!,
         newQuantity: newQty,
         reason: _reasonController.text.trim(),
@@ -149,10 +169,12 @@ class _StockAdjustScreenState extends State<StockAdjustScreen> {
       ),
       body: Form(
         key: _formKey,
-        child: Obx(() {
-          if (productController.isLoading.value) {
-            return const Center(child: CircularProgressIndicator());
-          }
+        child: _productController == null
+            ? const Center(child: Text('Product controller not available'))
+            : Obx(() {
+                if (_productController!.isLoading.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -205,7 +227,7 @@ class _StockAdjustScreenState extends State<StockAdjustScreen> {
                           ),
                           prefixIcon: const Icon(Icons.inventory_2),
                         ),
-                        items: productController.products
+                        items: _productController!.products
                             .where((p) => p.isActive)
                             .map<DropdownMenuItem<String>>((product) {
                               return DropdownMenuItem<String>(

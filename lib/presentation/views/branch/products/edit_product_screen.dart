@@ -13,7 +13,7 @@ class EditProductScreen extends StatefulWidget {
 
 class _EditProductScreenState extends State<EditProductScreen> {
   final _formKey = GlobalKey<FormState>();
-  final productController = Get.find<ProductController>();
+  ProductController? _productController;
 
   late TextEditingController _nameController;
   late TextEditingController _skuController;
@@ -46,13 +46,19 @@ class _EditProductScreenState extends State<EditProductScreen> {
   @override
   void initState() {
     super.initState();
+    try {
+      _productController = Get.find<ProductController>();
+    } catch (e) {
+      print('EditProductScreen: ProductController not found: $e');
+    }
     _loadProduct();
   }
 
   void _loadProduct() {
+    if (_productController == null) return;
     final productId = Get.parameters['id'];
     if (productId != null) {
-      _product = productController.products.firstWhereOrNull(
+      _product = _productController!.products.firstWhereOrNull(
         (p) => p.id == productId,
       );
     }
@@ -117,7 +123,11 @@ class _EditProductScreenState extends State<EditProductScreen> {
         'is_active': _isActive,
       };
 
-      final success = await productController.updateProduct(
+      if (_productController == null) {
+        Get.snackbar('Error', 'Product controller not available');
+        return;
+      }
+      final success = await _productController!.updateProduct(
         _product!.id,
         updates,
       );
@@ -461,7 +471,11 @@ class _EditProductScreenState extends State<EditProductScreen> {
           ElevatedButton(
             onPressed: () async {
               Navigator.pop(context);
-              final success = await productController.deleteProduct(
+              if (_productController == null) {
+                Get.snackbar('Error', 'Product controller not available');
+                return;
+              }
+              final success = await _productController!.deleteProduct(
                 _product!.id,
               );
               if (success) {

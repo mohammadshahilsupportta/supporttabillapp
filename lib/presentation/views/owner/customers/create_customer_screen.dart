@@ -12,7 +12,7 @@ class CreateCustomerScreen extends StatefulWidget {
 
 class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   final _formKey = GlobalKey<FormState>();
-  final customerController = Get.find<CustomerController>();
+  CustomerController? _customerController;
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -21,6 +21,16 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   final _gstController = TextEditingController();
 
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      _customerController = Get.find<CustomerController>();
+    } catch (e) {
+      print('CreateCustomerScreen: CustomerController not found: $e');
+    }
+  }
 
   @override
   void dispose() {
@@ -35,10 +45,15 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_customerController == null) {
+      Get.snackbar('Error', 'Customer controller not available');
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final success = await customerController.createCustomer(
+      final success = await _customerController!.createCustomer(
         name: _nameController.text.trim(),
         phone: _phoneController.text.trim().isNotEmpty
             ? _phoneController.text.trim()

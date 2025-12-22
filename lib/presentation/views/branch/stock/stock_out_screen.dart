@@ -14,8 +14,8 @@ class StockOutScreen extends StatefulWidget {
 
 class _StockOutScreenState extends State<StockOutScreen> {
   final _formKey = GlobalKey<FormState>();
-  final stockController = Get.find<StockController>();
-  final productController = Get.find<ProductController>();
+  StockController? _stockController;
+  ProductController? _productController;
 
   String? _selectedProductId;
   final _quantityController = TextEditingController(text: '1');
@@ -26,6 +26,17 @@ class _StockOutScreenState extends State<StockOutScreen> {
   @override
   void initState() {
     super.initState();
+    try {
+      _stockController = Get.find<StockController>();
+    } catch (e) {
+      print('StockOutScreen: StockController not found: $e');
+    }
+    try {
+      _productController = Get.find<ProductController>();
+    } catch (e) {
+      print('StockOutScreen: ProductController not found: $e');
+    }
+    
     final args = Get.arguments as Map<String, dynamic>?;
     if (args != null && args['product_id'] != null) {
       _selectedProductId = args['product_id'];
@@ -40,9 +51,9 @@ class _StockOutScreenState extends State<StockOutScreen> {
   }
 
   Product? get _selectedProduct {
-    if (_selectedProductId == null) return null;
+    if (_selectedProductId == null || _productController == null) return null;
     try {
-      return productController.products.firstWhere(
+      return _productController!.products.firstWhere(
         (p) => p.id == _selectedProductId,
       );
     } catch (e) {
@@ -51,9 +62,9 @@ class _StockOutScreenState extends State<StockOutScreen> {
   }
 
   int get _currentStock {
-    if (_selectedProductId == null) return 0;
+    if (_selectedProductId == null || _stockController == null) return 0;
     try {
-      final stockItem = stockController.currentStock.firstWhere(
+      final stockItem = _stockController!.currentStock.firstWhere(
         (s) => s.productId == _selectedProductId,
       );
       return stockItem.quantity;
@@ -81,10 +92,15 @@ class _StockOutScreenState extends State<StockOutScreen> {
       return;
     }
 
+    if (_stockController == null) {
+      Get.snackbar('Error', 'Stock controller not available');
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final success = await stockController.addStockOut(
+      final success = await _stockController!.addStockOut(
         productId: _selectedProductId!,
         quantity: quantity,
         reason: _reasonController.text.trim().isNotEmpty
@@ -128,10 +144,12 @@ class _StockOutScreenState extends State<StockOutScreen> {
       appBar: AppBar(title: const Text('Remove Stock'), elevation: 0),
       body: Form(
         key: _formKey,
-        child: Obx(() {
-          if (productController.isLoading.value) {
-            return const Center(child: CircularProgressIndicator());
-          }
+        child: _productController == null
+            ? const Center(child: Text('Product controller not available'))
+            : Obx(() {
+                if (_productController!.isLoading.value) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
           return ListView(
             padding: const EdgeInsets.all(16),
@@ -177,7 +195,7 @@ class _StockOutScreenState extends State<StockOutScreen> {
                           ),
                           prefixIcon: const Icon(Icons.inventory_2),
                         ),
-                        items: productController.products
+                        items: _productController!.products
                             .where((p) => p.isActive)
                             .map<DropdownMenuItem<String>>((product) {
                               return DropdownMenuItem<String>(

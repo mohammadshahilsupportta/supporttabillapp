@@ -13,8 +13,8 @@ class CreateUserScreen extends StatefulWidget {
 
 class _CreateUserScreenState extends State<CreateUserScreen> {
   final _formKey = GlobalKey<FormState>();
-  final userController = Get.find<UserController>();
-  late final BranchController branchController;
+  UserController? _userController;
+  BranchController? _branchController;
 
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -33,12 +33,21 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
   @override
   void initState() {
     super.initState();
+    try {
+      _userController = Get.find<UserController>();
+    } catch (e) {
+      print('CreateUserScreen: UserController not found: $e');
+    }
     // Try to get BranchController if available
     try {
-      branchController = Get.find<BranchController>();
+      _branchController = Get.find<BranchController>();
     } catch (e) {
-      Get.put(BranchController());
-      branchController = Get.find<BranchController>();
+      try {
+        Get.put(BranchController());
+        _branchController = Get.find<BranchController>();
+      } catch (e2) {
+        print('CreateUserScreen: BranchController not found: $e2');
+      }
     }
   }
 
@@ -65,10 +74,15 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
       return;
     }
 
+    if (_userController == null) {
+      Get.snackbar('Error', 'User controller not available');
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
-      final success = await userController.createUser(
+      final success = await _userController!.createUser(
         email: _emailController.text.trim(),
         fullName: _nameController.text.trim(),
         role: _role,
@@ -286,7 +300,7 @@ class _CreateUserScreenState extends State<CreateUserScreen> {
                             ),
                             prefixIcon: const Icon(Icons.store),
                           ),
-                          items: branchController.branches
+                          items: (_branchController?.branches ?? [])
                               .where((b) => b['is_active'] == true)
                               .map<DropdownMenuItem<String>>((branch) {
                                 return DropdownMenuItem<String>(
