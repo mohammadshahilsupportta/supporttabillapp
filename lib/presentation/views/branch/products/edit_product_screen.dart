@@ -6,6 +6,8 @@ import '../../../../data/datasources/product_datasource.dart';
 import '../../../controllers/product_controller.dart';
 import '../../../controllers/stock_controller.dart';
 import '../../../controllers/branch_controller.dart';
+import '../../../controllers/auth_controller.dart';
+import '../../../controllers/branch_store_controller.dart';
 
 class EditProductScreen extends StatefulWidget {
   const EditProductScreen({super.key});
@@ -37,6 +39,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
   bool _isLoadingProduct = true;
 
   Product? _product;
+  bool _returnToDetails = false;
 
   // Stock entry state
   bool _addStockOnUpdate = false;
@@ -117,8 +120,13 @@ class _EditProductScreenState extends State<EditProductScreen> {
     // Try to get ID from arguments first (more reliable)
     String? productId;
     final args = Get.arguments as Map<String, dynamic>?;
-    if (args != null && args['productId'] != null) {
-      productId = args['productId'] as String;
+    if (args != null) {
+      if (args['productId'] != null) {
+        productId = args['productId'] as String;
+      }
+      if (args['returnToDetails'] == true) {
+        _returnToDetails = true;
+      }
     }
     
     // If not in arguments, try parameters
@@ -264,6 +272,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
 
       if (_productController == null) {
         Get.snackbar('Error', 'Product controller not available');
+        setState(() => _isLoading = false);
         return;
       }
 
@@ -273,6 +282,7 @@ class _EditProductScreenState extends State<EditProductScreen> {
       );
 
       if (!success) {
+        setState(() => _isLoading = false);
         return;
       }
 
@@ -342,7 +352,37 @@ class _EditProductScreenState extends State<EditProductScreen> {
         );
       }
 
-      Get.back();
+      // Refresh product data before navigating back
+      if (_productController != null) {
+        await _productController!.loadProducts();
+      }
+      if (_stockController != null) {
+        final authController = Get.find<AuthController>();
+        final user = authController.currentUser.value;
+        String? branchId;
+        if (user?.role.value == 'tenant_owner') {
+          try {
+            final branchStore = Get.find<BranchStoreController>();
+            branchId = branchStore.selectedBranchId.value;
+          } catch (_) {
+            // BranchStoreController not available
+          }
+        } else {
+          branchId = authController.branchId;
+        }
+        await _stockController!.loadCurrentStock(branchId: branchId);
+      }
+
+      // Navigate back after successful update
+      // If we came from product details screen, pop back with refresh flag
+      // Otherwise, just go back (to products list)
+      if (_returnToDetails) {
+        // Pop back to product details screen with refresh flag
+        Get.back(result: 'refresh');
+      } else {
+        // Use Get.back() which works with GetX navigation
+        Get.back();
+      }
     } catch (e) {
       Get.snackbar(
         'Error',

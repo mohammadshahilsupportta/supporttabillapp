@@ -1768,6 +1768,18 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
   }
 
   void _showProductDetails(BuildContext context, dynamic product) {
+    // Navigate to product details screen instead of showing bottom sheet
+    Get.toNamed(
+      AppRoutes.productDetails.replaceAll(':id', product.id),
+      arguments: {'productId': product.id},
+    );
+  }
+
+  // Removed: _showProductDetailsBottomSheet - now using full screen navigation
+  void _showProductDetailsBottomSheet_UNUSED(
+    BuildContext context,
+    dynamic product,
+  ) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -2224,9 +2236,15 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () {
+                              onPressed: () async {
+                                // Close the bottom sheet first
                                 Navigator.of(context).pop();
-                                Get.toNamed(
+                                // Wait a bit to ensure bottom sheet is closed
+                                await Future.delayed(
+                                  const Duration(milliseconds: 300),
+                                );
+                                // Navigate to edit screen
+                                await Get.toNamed(
                                   AppRoutes.editProduct.replaceAll(
                                     ':id',
                                     product.id,

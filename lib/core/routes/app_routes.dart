@@ -22,6 +22,7 @@ import '../../presentation/views/branch/expenses/create_expense_screen.dart';
 import '../../presentation/views/branch/expenses/expenses_list_screen.dart';
 import '../../presentation/views/branch/products/create_product_screen.dart';
 import '../../presentation/views/branch/products/edit_product_screen.dart';
+import '../../presentation/views/branch/products/product_details_screen.dart';
 import '../../presentation/views/branch/products/products_list_screen.dart';
 import '../../presentation/views/branch/purchases/create_purchase_screen.dart';
 import '../../presentation/views/branch/purchases/purchases_list_screen.dart';
@@ -69,6 +70,7 @@ class AppRoutes {
   static const String productsList = '/branch/products';
   static const String createProduct = '/branch/products/create';
   static const String editProduct = '/branch/products/edit/:id';
+  static const String productDetails = '/branch/products/details/:id';
   static const String expensesList = '/branch/expenses';
   static const String createExpense = '/branch/expenses/create';
   static const String purchasesList = '/branch/purchases';
@@ -281,6 +283,14 @@ class AppRoutes {
       page: () => const EditProductScreen(),
       binding: BindingsBuilder(() {
         Get.lazyPut<ProductController>(() => ProductController());
+      }),
+    ),
+    GetPage(
+      name: productDetails,
+      page: () => const ProductDetailsScreen(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut<ProductController>(() => ProductController());
+        Get.lazyPut<StockController>(() => StockController());
       }),
     ),
 
