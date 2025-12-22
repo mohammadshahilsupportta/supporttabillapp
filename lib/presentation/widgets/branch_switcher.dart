@@ -23,9 +23,15 @@ class _BranchSwitcherState extends State<BranchSwitcher> {
   @override
   void initState() {
     super.initState();
+    // Mark as initialized early so widget can render
+    // The actual controller initialization will happen in build or post-frame
+    _initialized = true;
+    
     // Schedule initialization after first frame to avoid build conflicts
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _initializeControllers();
+      if (mounted) {
+        _initializeControllers();
+      }
     });
   }
 
@@ -45,6 +51,13 @@ class _BranchSwitcherState extends State<BranchSwitcher> {
 
       final branchController = Get.find<BranchController>();
       final branchStore = Get.find<BranchStoreController>();
+
+      // Mark as initialized early so widget can render
+      if (mounted) {
+        setState(() {
+          _initialized = true;
+        });
+      }
 
       // Wait for branches to load if they're currently loading
       if (branchController.isLoading.value) {
@@ -66,21 +79,24 @@ class _BranchSwitcherState extends State<BranchSwitcher> {
       // Auto-select main branch only once during initialization
       if (!_autoSelectAttempted && Get.isRegistered<BranchStoreController>()) {
         _autoSelectAttempted = true;
-        // Schedule auto-select after a small delay to ensure branches are loaded
-        WidgetsBinding.instance.addPostFrameCallback((_) async {
-          if (!mounted) return;
+        // Try auto-select immediately if branches are available
+        if (branchController.branches.isNotEmpty) {
           try {
             await branchStore.autoSelectMainBranch();
           } catch (e) {
             print('Auto-select error: $e');
           }
-        });
-      }
-
-      if (mounted) {
-        setState(() {
-          _initialized = true;
-        });
+        } else {
+          // If no branches yet, schedule auto-select after branches load
+          // Listen for branches to be loaded
+          Worker? worker;
+          worker = ever(branchController.branches, (branches) {
+            if (branches.isNotEmpty && mounted) {
+              branchStore.autoSelectMainBranch();
+              worker?.dispose();
+            }
+          });
+        }
       }
     } catch (e) {
       print('BranchSwitcher init error: $e');
@@ -107,13 +123,21 @@ class _BranchSwitcherState extends State<BranchSwitcher> {
       return const SizedBox.shrink();
     }
 
-    // Check if controllers are registered (outside Obx)
-    if (!Get.isRegistered<BranchController>() || 
-        !Get.isRegistered<BranchStoreController>()) {
-      if (!_initialized) {
-        return _buildLoadingIndicator(context);
-      }
-      return const SizedBox.shrink();
+    // Ensure controllers are registered - initialize if needed
+    if (!Get.isRegistered<BranchController>()) {
+      Get.put(BranchController());
+    }
+    if (!Get.isRegistered<BranchStoreController>()) {
+      Get.put(BranchStoreController());
+    }
+
+    // Trigger initialization if not done yet
+    if (!_initialized) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_initialized) {
+          _initializeControllers();
+        }
+      });
     }
 
     final branchController = Get.find<BranchController>();

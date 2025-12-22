@@ -36,10 +36,10 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
 
   Future<void> _initializeBranchControllers() async {
     if (_controllersInitialized) return;
-    
+
     try {
       // AuthController is registered permanently in main.dart
-      // Ensure other controllers exist  
+      // Ensure other controllers exist
       if (!Get.isRegistered<BranchController>()) {
         Get.put(BranchController());
       }
@@ -58,17 +58,18 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       if (user?.role.value == 'tenant_owner') {
         // Load branches immediately
         final branchController = Get.find<BranchController>();
-        if (branchController.branches.isEmpty && !branchController.isLoading.value) {
+        if (branchController.branches.isEmpty &&
+            !branchController.isLoading.value) {
           await branchController.loadBranches();
         }
-        
+
         // Auto-select main branch after branches are loaded
         final branchStore = Get.find<BranchStoreController>();
         await branchStore.autoSelectMainBranch();
       }
 
       _controllersInitialized = true;
-      
+
       // Trigger rebuild if mounted
       if (mounted) {
         setState(() {});
@@ -86,10 +87,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          _getTitle(),
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: Text(_getTitle(), overflow: TextOverflow.ellipsis),
         elevation: 0,
         actions: [
           // Branch switcher for tenant owners (only on dashboard tab)
@@ -352,14 +350,14 @@ class _DashboardTabState extends State<_DashboardTab> {
 
   Future<void> _initializeBranchSelection() async {
     if (_initialized) return;
-    
+
     try {
       final authController = Get.find<AuthController>();
       final user = authController.currentUser.value;
 
       if (user?.role.value == 'tenant_owner') {
         // Ensure controllers are initialized
-        if (!Get.isRegistered<BranchStoreController>() || 
+        if (!Get.isRegistered<BranchStoreController>() ||
             !Get.isRegistered<BranchController>()) {
           return;
         }
@@ -368,7 +366,8 @@ class _DashboardTabState extends State<_DashboardTab> {
         final branchController = Get.find<BranchController>();
 
         // Only load branches if not already loaded
-        if (branchController.branches.isEmpty && !branchController.isLoading.value) {
+        if (branchController.branches.isEmpty &&
+            !branchController.isLoading.value) {
           await branchController.loadBranches();
         }
 
@@ -377,14 +376,15 @@ class _DashboardTabState extends State<_DashboardTab> {
           await branchStore.autoSelectMainBranch();
         }
       }
-      
+
       if (mounted) {
         _initialized = true;
       }
     } catch (e) {
       print('Error initializing branch selection: $e');
       if (mounted) {
-        _initialized = true; // Mark as initialized even on error to prevent retries
+        _initialized =
+            true; // Mark as initialized even on error to prevent retries
       }
     }
   }
@@ -396,17 +396,6 @@ class _DashboardTabState extends State<_DashboardTab> {
     final authController = Get.find<AuthController>();
     final user = authController.currentUser.value;
 
-    // Get current branch info
-    Map<String, dynamic>? currentBranch;
-    if (user?.role.value == 'tenant_owner') {
-      try {
-        final branchStore = Get.find<BranchStoreController>();
-        currentBranch = branchStore.currentBranch;
-      } catch (_) {
-        // BranchStoreController not initialized
-      }
-    }
-
     return RefreshIndicator(
       onRefresh: () => dc.refreshStats(),
       child: SingleChildScrollView(
@@ -416,87 +405,125 @@ class _DashboardTabState extends State<_DashboardTab> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ========== BRANCH INFO BANNER ==========
-            if (currentBranch != null && currentBranch.isNotEmpty) ...[
-              Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.primaryColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color: theme.primaryColor.withValues(alpha: 0.3),
-                    width: 1,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.store,
-                      color: theme.primaryColor,
-                      size: 24,
+            // Wrap in Obx to make it reactive to branch changes
+            if (user?.role.value == 'tenant_owner')
+              Obx(() {
+                Map<String, dynamic>? currentBranch;
+                try {
+                  if (Get.isRegistered<BranchStoreController>() &&
+                      Get.isRegistered<BranchController>()) {
+                    final branchStore = Get.find<BranchStoreController>();
+                    final branchController = Get.find<BranchController>();
+
+                    // Get current branch reactively
+                    final selectedId = branchStore.selectedBranchId.value;
+                    if (selectedId != null &&
+                        branchController.branches.isNotEmpty) {
+                      try {
+                        currentBranch = branchController.branches.firstWhere(
+                          (b) =>
+                              b['id'] == selectedId && b['is_active'] == true,
+                          orElse: () => <String, dynamic>{},
+                        );
+                        if (currentBranch.isEmpty) {
+                          currentBranch = null;
+                        }
+                      } catch (_) {
+                        currentBranch = null;
+                      }
+                    }
+                  }
+                } catch (_) {
+                  // Controllers not available
+                  currentBranch = null;
+                }
+
+                if (currentBranch == null || currentBranch.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: theme.primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: theme.primaryColor.withValues(alpha: 0.3),
+                      width: 1,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Text(
-                                'Viewing: ${currentBranch['name'] ?? 'Branch'}',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: theme.primaryColor,
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.store, color: theme.primaryColor, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text(
+                                  'Viewing: ${currentBranch['name'] ?? 'Branch'}',
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: theme.primaryColor,
+                                  ),
                                 ),
-                              ),
-                              if (currentBranch['is_main'] == true) ...[
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade100,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    'Main Branch',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      color: Colors.orange.shade800,
-                                      fontWeight: FontWeight.w600,
+                                if (currentBranch['is_main'] == true) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.shade100,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Text(
+                                      'Main Branch',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.orange.shade800,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
                                   ),
-                                ),
+                                ],
                               ],
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'All data shown for this branch only',
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.primaryColor.withValues(alpha: 0.7),
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (dc.isLoading.value)
-                      SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            theme.primaryColor,
-                          ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'All data shown for this branch only',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.primaryColor.withValues(
+                                  alpha: 0.7,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                  ],
-                ),
-              ),
-            ],
+                      Obx(() {
+                        if (dc.isLoading.value) {
+                          return SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                theme.primaryColor,
+                              ),
+                            ),
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      }),
+                    ],
+                  ),
+                );
+              }),
 
             // ========== PERIOD SELECTOR ==========
             Obx(
@@ -875,10 +902,11 @@ class _DashboardTabState extends State<_DashboardTab> {
                               children: [
                                 Text(
                                   dc.formatCurrencyIndian(dc.totalSales.value),
-                                  style: theme.textTheme.headlineMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.green.shade600,
-                                  ),
+                                  style: theme.textTheme.headlineMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.green.shade600,
+                                      ),
                                 ),
                                 Text(
                                   '${dc.salesCount.value} bills this ${dc.periodDisplayName.toLowerCase()}',
@@ -896,7 +924,8 @@ class _DashboardTabState extends State<_DashboardTab> {
                               alignment: WrapAlignment.end,
                               children: [
                                 ElevatedButton(
-                                  onPressed: () => Get.toNamed(AppRoutes.productsList),
+                                  onPressed: () =>
+                                      Get.toNamed(AppRoutes.productsList),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green.shade600,
                                     foregroundColor: Colors.white,
@@ -904,7 +933,8 @@ class _DashboardTabState extends State<_DashboardTab> {
                                   child: const Text('View Products'),
                                 ),
                                 OutlinedButton(
-                                  onPressed: () => Get.toNamed(AppRoutes.createProduct),
+                                  onPressed: () =>
+                                      Get.toNamed(AppRoutes.createProduct),
                                   child: const Text('Add Product'),
                                 ),
                               ],
@@ -954,10 +984,11 @@ class _DashboardTabState extends State<_DashboardTab> {
                               children: [
                                 Text(
                                   dc.formatCurrencyIndian(dc.stockValue.value),
-                                  style: theme.textTheme.headlineMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue.shade600,
-                                  ),
+                                  style: theme.textTheme.headlineMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue.shade600,
+                                      ),
                                 ),
                                 Text(
                                   'Total stock value',
@@ -975,7 +1006,8 @@ class _DashboardTabState extends State<_DashboardTab> {
                               alignment: WrapAlignment.end,
                               children: [
                                 ElevatedButton(
-                                  onPressed: () => Get.toNamed(AppRoutes.productsList),
+                                  onPressed: () =>
+                                      Get.toNamed(AppRoutes.productsList),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.blue.shade600,
                                     foregroundColor: Colors.white,
@@ -983,7 +1015,8 @@ class _DashboardTabState extends State<_DashboardTab> {
                                   child: const Text('View Catalogue'),
                                 ),
                                 OutlinedButton(
-                                  onPressed: () => Get.toNamed(AppRoutes.createProduct),
+                                  onPressed: () =>
+                                      Get.toNamed(AppRoutes.createProduct),
                                   child: const Text('Add Product'),
                                 ),
                               ],
@@ -1033,12 +1066,13 @@ class _DashboardTabState extends State<_DashboardTab> {
                               children: [
                                 Text(
                                   dc.formatCurrencyIndian(dc.totalProfit.value),
-                                  style: theme.textTheme.headlineMedium?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                    color: dc.totalProfit.value >= 0
-                                        ? Colors.green.shade600
-                                        : Colors.red.shade600,
-                                  ),
+                                  style: theme.textTheme.headlineMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: dc.totalProfit.value >= 0
+                                            ? Colors.green.shade600
+                                            : Colors.red.shade600,
+                                      ),
                                 ),
                                 Text(
                                   '${dc.profitMargin.value.toStringAsFixed(1)}% profit margin',
@@ -1056,7 +1090,8 @@ class _DashboardTabState extends State<_DashboardTab> {
                               alignment: WrapAlignment.end,
                               children: [
                                 ElevatedButton(
-                                  onPressed: () => Get.toNamed(AppRoutes.branchDetails),
+                                  onPressed: () =>
+                                      Get.toNamed(AppRoutes.branchDetails),
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.purple.shade600,
                                     foregroundColor: Colors.white,
@@ -1064,7 +1099,8 @@ class _DashboardTabState extends State<_DashboardTab> {
                                   child: const Text('View Branches'),
                                 ),
                                 OutlinedButton(
-                                  onPressed: () => Get.toNamed(AppRoutes.branchCreate),
+                                  onPressed: () =>
+                                      Get.toNamed(AppRoutes.branchCreate),
                                   child: const Text('Add Branch'),
                                 ),
                               ],
@@ -1329,7 +1365,7 @@ class _DashboardTabState extends State<_DashboardTab> {
     final theme = Theme.of(context);
     BranchController? branchController;
     AuthController? authController;
-    
+
     try {
       if (Get.isRegistered<BranchController>()) {
         branchController = Get.find<BranchController>();
@@ -1337,7 +1373,7 @@ class _DashboardTabState extends State<_DashboardTab> {
     } catch (e) {
       print('_buildBranchesAndStaffSection: BranchController error: $e');
     }
-    
+
     try {
       if (Get.isRegistered<AuthController>()) {
         authController = Get.find<AuthController>();
@@ -1345,9 +1381,9 @@ class _DashboardTabState extends State<_DashboardTab> {
     } catch (e) {
       print('_buildBranchesAndStaffSection: AuthController error: $e');
     }
-    
+
     final tenantId = authController?.tenantId;
-    
+
     if (branchController == null || authController == null) {
       return const SizedBox.shrink();
     }
@@ -1394,7 +1430,10 @@ class _DashboardTabState extends State<_DashboardTab> {
                           TextButton(
                             onPressed: () {
                               // Switch to branches tab
-                              final parent = context.findAncestorStateOfType<_OwnerDashboardScreenState>();
+                              final parent = context
+                                  .findAncestorStateOfType<
+                                    _OwnerDashboardScreenState
+                                  >();
                               if (parent != null) {
                                 parent.setState(() {
                                   parent._selectedIndex = 1;
@@ -1515,9 +1554,11 @@ class _DashboardTabState extends State<_DashboardTab> {
                         )
                       else
                         ...dc.users
-                            .where((u) =>
-                                u['tenant_id'] == tenantId &&
-                                u['role'] != 'tenant_owner')
+                            .where(
+                              (u) =>
+                                  u['tenant_id'] == tenantId &&
+                                  u['role'] != 'tenant_owner',
+                            )
                             .take(3)
                             .map((member) {
                               final isActive = member['is_active'] == true;
@@ -1528,9 +1569,10 @@ class _DashboardTabState extends State<_DashboardTab> {
                                     Expanded(
                                       child: Text(
                                         member['full_name'] ?? 'Unknown',
-                                        style: theme.textTheme.bodyMedium?.copyWith(
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                                        style: theme.textTheme.bodyMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w500,
+                                            ),
                                       ),
                                     ),
                                     Container(
@@ -1596,13 +1638,13 @@ class _BranchesTabState extends State<_BranchesTab> {
     } catch (e) {
       print('_BranchesTab: Error getting BranchController: $e');
     }
-    
+
     // Defer loading to avoid build conflicts
     // Only load if branches are empty and not already loading
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && 
-          _branchController != null && 
-          _branchController!.branches.isEmpty && 
+      if (mounted &&
+          _branchController != null &&
+          _branchController!.branches.isEmpty &&
           !_branchController!.isLoading.value) {
         // Use Future.microtask to ensure this runs after the current frame
         Future.microtask(() {
@@ -2046,7 +2088,6 @@ class _BranchesTabState extends State<_BranchesTab> {
           address.contains(query);
     }).toList();
   }
-
 }
 
 // ============ REPORTS TAB ============
