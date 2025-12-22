@@ -212,15 +212,28 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                             future: _getProductStockQuantity(product.id),
                             builder: (context, stockSnapshot) {
                               final stock = stockSnapshot.data ?? 0;
-                              final canActivate = stock > 0 || product.isActive;
+                              // Auto-inactive logic: If stock is 0, product should be inactive (for display)
+                              final shouldBeInactive = stock == 0;
+                              final effectiveIsActive = shouldBeInactive ? false : product.isActive;
+                              // Can only activate if stock > 0
+                              final canActivate = stock > 0;
 
                               return Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Switch(
-                                    value: product.isActive,
+                                    value: effectiveIsActive,
                                     onChanged: canActivate
                                         ? (bool newValue) async {
+                                            // Prevent enabling if stock is 0
+                                            if (newValue && stock == 0) {
+                                              Get.snackbar(
+                                                'Error',
+                                                'Cannot activate product with zero stock. Please add stock first.',
+                                                snackPosition: SnackPosition.BOTTOM,
+                                              );
+                                              return;
+                                            }
                                             await productController
                                                 .toggleProductActive(
                                                   product.id,
@@ -232,14 +245,35 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
                                   ),
                                   const SizedBox(width: 4),
                                   Text(
-                                    product.isActive ? 'Active' : 'Inactive',
+                                    effectiveIsActive ? 'Active' : 'Inactive',
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       fontWeight: FontWeight.w600,
-                                      color: product.isActive
+                                      color: effectiveIsActive
                                           ? Colors.green
                                           : Colors.grey,
                                     ),
                                   ),
+                                  if (shouldBeInactive && !product.isActive) ...[
+                                    const SizedBox(width: 4),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 1,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.orange.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(3),
+                                      ),
+                                      child: Text(
+                                        'Auto',
+                                        style: theme.textTheme.bodySmall?.copyWith(
+                                          color: Colors.orange,
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ],
                               );
                             },
@@ -546,17 +580,25 @@ class _ProductsListScreenState extends State<ProductsListScreen> {
     }
 
     int totalProducts = allProducts.length;
-    int activeProducts = allProducts.where((p) => p.isActive).length;
+    int activeProducts = 0; // Count effective active (stock > 0)
     int lowStockProducts = 0;
     int soldOutProducts = 0;
 
     for (final product in allProducts) {
       final quantity = stockMap[product.id] ?? 0;
+      // Auto-inactive logic: If stock is 0, product should be inactive (for display)
+      final shouldBeInactive = quantity == 0;
+      final effectiveIsActive = shouldBeInactive ? false : product.isActive;
 
       if (quantity == 0) {
         soldOutProducts++;
       } else if (product.minStock > 0 && quantity <= product.minStock) {
         lowStockProducts++;
+      }
+      
+      // Count as active only if effectively active (stock > 0 and isActive)
+      if (effectiveIsActive) {
+        activeProducts++;
       }
     }
 
