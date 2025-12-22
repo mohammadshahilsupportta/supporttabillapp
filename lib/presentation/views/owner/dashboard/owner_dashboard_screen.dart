@@ -8,6 +8,7 @@ import '../../../controllers/branch_controller.dart';
 import '../../../controllers/branch_store_controller.dart';
 import '../../../controllers/dashboard_controller.dart';
 import '../../../widgets/branch_switcher.dart';
+import '../../../widgets/shimmer_widgets.dart';
 
 class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key});
@@ -507,13 +508,14 @@ class _DashboardTabState extends State<_DashboardTab> {
                       ),
                       Obx(() {
                         if (dc.isLoading.value) {
-                          return SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                theme.primaryColor,
+                          return ShimmerWidgets.shimmerWrapper(
+                            context: context,
+                            child: Container(
+                              width: 20,
+                              height: 20,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
                               ),
                             ),
                           );
@@ -526,8 +528,11 @@ class _DashboardTabState extends State<_DashboardTab> {
               }),
 
             // ========== PERIOD SELECTOR ==========
-            Obx(
-              () => Container(
+            Obx(() {
+              if (dc.isLoading.value) {
+                return ShimmerWidgets.shimmerPeriodSelector(context);
+              }
+              return Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 8,
@@ -560,138 +565,165 @@ class _DashboardTabState extends State<_DashboardTab> {
                     ),
                   ],
                 ),
-              ),
-            ),
+              );
+            }),
             const SizedBox(height: 16),
 
-            // ========== LOADING INDICATOR ==========
+            // ========== PRIMARY METRICS - Sales & Stock ==========
             Obx(() {
               if (dc.isLoading.value) {
-                return const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(32),
-                    child: CircularProgressIndicator(),
-                  ),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ShimmerWidgets.shimmerWrapper(
+                      context: context,
+                      child: Container(
+                        height: 24,
+                        width: 120,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ShimmerWidgets.shimmerDashboardGrid(context),
+                    const SizedBox(height: 24),
+                    ShimmerWidgets.shimmerWrapper(
+                      context: context,
+                      child: Container(
+                        height: 24,
+                        width: 180,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ShimmerWidgets.shimmerSecondaryGrid(context),
+                    const SizedBox(height: 24),
+                    ShimmerWidgets.shimmerQuickActionsSection(context),
+                  ],
                 );
               }
-              return const SizedBox.shrink();
-            }),
 
-            // ========== PRIMARY METRICS - Sales & Stock ==========
-            Text('Sales & Stock', style: theme.textTheme.titleLarge),
-            const SizedBox(height: 12),
-            Obx(
-              () => GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 1.4,
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildStatCard(
-                    context,
-                    'Total Sales (${dc.periodDisplayName})',
-                    dc.formatCurrencyIndian(dc.totalSales.value),
-                    '${dc.salesCount.value} bills',
-                    Icons.currency_rupee,
-                    const Color(0xFF10B981), // Secondary green
+                  Text('Sales & Stock', style: theme.textTheme.titleLarge),
+                  const SizedBox(height: 12),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    childAspectRatio: 1.4,
+                    children: [
+                      _buildStatCard(
+                        context,
+                        'Total Sales (${dc.periodDisplayName})',
+                        dc.formatCurrencyIndian(dc.totalSales.value),
+                        '${dc.salesCount.value} bills',
+                        Icons.currency_rupee,
+                        const Color(0xFF10B981), // Secondary green
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Stock Value',
+                        dc.formatCurrencyIndian(dc.stockValue.value),
+                        '${dc.productsWithStock.value} products',
+                        Icons.inventory_2,
+                        const Color(0xFF2563EB), // Primary blue
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Profit (${dc.periodDisplayName})',
+                        dc.formatCurrencyIndian(dc.totalProfit.value),
+                        '${dc.profitMargin.value.toStringAsFixed(1)}% margin',
+                        Icons.trending_up,
+                        dc.totalProfit.value >= 0
+                            ? const Color(0xFF0891B2)
+                            : const Color(0xFFEF4444), // Cyan or Red
+                      ),
+                      _buildStatCard(
+                        context,
+                        'Active Products',
+                        '${dc.totalProducts.value}',
+                        '${dc.inStockCount.value} in stock',
+                        Icons.category,
+                        const Color(0xFF8B5CF6), // Violet
+                      ),
+                    ],
                   ),
-                  _buildStatCard(
-                    context,
-                    'Stock Value',
-                    dc.formatCurrencyIndian(dc.stockValue.value),
-                    '${dc.productsWithStock.value} products',
-                    Icons.inventory_2,
-                    const Color(0xFF2563EB), // Primary blue
-                  ),
-                  _buildStatCard(
-                    context,
-                    'Profit (${dc.periodDisplayName})',
-                    dc.formatCurrencyIndian(dc.totalProfit.value),
-                    '${dc.profitMargin.value.toStringAsFixed(1)}% margin',
-                    Icons.trending_up,
-                    dc.totalProfit.value >= 0
-                        ? const Color(0xFF0891B2)
-                        : const Color(0xFFEF4444), // Cyan or Red
-                  ),
-                  _buildStatCard(
-                    context,
-                    'Active Products',
-                    '${dc.totalProducts.value}',
-                    '${dc.inStockCount.value} in stock',
-                    Icons.category,
-                    const Color(0xFF8B5CF6), // Violet
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-            // ========== SECONDARY METRICS ==========
-            Text(
-              'Stock Status & Financials',
-              style: theme.textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            Obx(
-              () => GridView.count(
-                crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                childAspectRatio: 1.5,
-                children: [
-                  _buildSmallStatCard(
-                    context,
-                    'Low Stock',
-                    '${dc.lowStockCount.value}',
-                    'Need restocking',
-                    Icons.warning_amber,
-                    dc.lowStockCount.value > 0
-                        ? Colors.yellow.shade700
-                        : Colors.grey,
-                    dc.lowStockCount.value > 0 ? Colors.yellow.shade50 : null,
+                  // ========== SECONDARY METRICS ==========
+                  Text(
+                    'Stock Status & Financials',
+                    style: theme.textTheme.titleLarge,
                   ),
-                  _buildSmallStatCard(
-                    context,
-                    'Sold Out',
-                    '${dc.soldOutCount.value}',
-                    'Out of stock',
-                    Icons.remove_circle_outline,
-                    dc.soldOutCount.value > 0 ? Colors.red : Colors.grey,
-                    dc.soldOutCount.value > 0 ? Colors.red.shade50 : null,
+                  const SizedBox(height: 12),
+                  GridView.count(
+                    crossAxisCount: 2,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    childAspectRatio: 1.5,
+                    children: [
+                      _buildSmallStatCard(
+                        context,
+                        'Low Stock',
+                        '${dc.lowStockCount.value}',
+                        'Need restocking',
+                        Icons.warning_amber,
+                        dc.lowStockCount.value > 0
+                            ? Colors.yellow.shade700
+                            : Colors.grey,
+                        dc.lowStockCount.value > 0
+                            ? Colors.yellow.shade50
+                            : null,
+                      ),
+                      _buildSmallStatCard(
+                        context,
+                        'Sold Out',
+                        '${dc.soldOutCount.value}',
+                        'Out of stock',
+                        Icons.remove_circle_outline,
+                        dc.soldOutCount.value > 0 ? Colors.red : Colors.grey,
+                        dc.soldOutCount.value > 0 ? Colors.red.shade50 : null,
+                      ),
+                      _buildSmallStatCard(
+                        context,
+                        'Expenses',
+                        dc.formatCurrency(dc.totalExpenses.value),
+                        '${dc.expensesCount.value} entries',
+                        Icons.arrow_downward,
+                        Colors.orange,
+                        null,
+                      ),
+                      _buildSmallStatCard(
+                        context,
+                        'Purchases',
+                        dc.formatCurrency(dc.totalPurchases.value),
+                        '${dc.purchasesCount.value} orders',
+                        Icons.arrow_upward,
+                        Colors.indigo,
+                        null,
+                      ),
+                    ],
                   ),
-                  _buildSmallStatCard(
-                    context,
-                    'Expenses',
-                    dc.formatCurrency(dc.totalExpenses.value),
-                    '${dc.expensesCount.value} entries',
-                    Icons.arrow_downward,
-                    Colors.orange,
-                    null,
-                  ),
-                  _buildSmallStatCard(
-                    context,
-                    'Purchases',
-                    dc.formatCurrency(dc.totalPurchases.value),
-                    '${dc.purchasesCount.value} orders',
-                    Icons.arrow_upward,
-                    Colors.indigo,
-                    null,
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
-            // ========== QUICK ACTIONS - Primary Focus ==========
-            Obx(() {
-              if (dc.isLoading.value || dc.totalSales.value == 0) {
-                return const SizedBox.shrink();
-              }
-              return _buildQuickActionsSection(context, dc);
+                  // ========== QUICK ACTIONS - Primary Focus ==========
+                  if (dc.totalSales.value > 0)
+                    _buildQuickActionsSection(context, dc)
+                  else
+                    const SizedBox.shrink(),
+                ],
+              );
             }),
             const SizedBox(height: 24),
 
@@ -1662,12 +1694,12 @@ class _BranchesTabState extends State<_BranchesTab> {
     final isDark = theme.brightness == Brightness.dark;
 
     if (_branchController == null) {
-      return const Center(child: CircularProgressIndicator());
+      return ShimmerWidgets.shimmerDashboard(context);
     }
 
     return Obx(() {
       if (_branchController!.isLoading.value) {
-        return const Center(child: CircularProgressIndicator());
+        return ShimmerWidgets.shimmerDashboard(context);
       }
 
       final filtered = _getFilteredBranches();

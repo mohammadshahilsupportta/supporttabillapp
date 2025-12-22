@@ -52,6 +52,9 @@ dependencies:
   # Permissions
   permission_handler: ^11.3.0
   floating_bottom_bar: ^0.0.3
+  
+  # Shimmer Loading Effect
+  shimmer: ^3.0.0
 
 dev_dependencies:
   flutter_test:
