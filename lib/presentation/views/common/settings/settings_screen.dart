@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../../../core/routes/app_routes.dart';
 import '../../../controllers/auth_controller.dart';
+import '../../../controllers/theme_controller.dart';
 
 class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
@@ -138,19 +139,7 @@ class SettingsScreen extends StatelessWidget {
           Card(
             child: Column(
               children: [
-                _buildSettingsTile(
-                  icon: Icons.palette,
-                  title: 'Theme',
-                  subtitle: 'Light / Dark mode',
-                  trailing: Switch(
-                    value: Get.isDarkMode,
-                    onChanged: (value) {
-                      Get.changeThemeMode(
-                        value ? ThemeMode.dark : ThemeMode.light,
-                      );
-                    },
-                  ),
-                ),
+                _buildThemeSelector(),
                 const Divider(height: 1),
                 _buildSettingsTile(
                   icon: Icons.language,
@@ -336,6 +325,104 @@ class SettingsScreen extends StatelessWidget {
           'Complete billing and inventory management solution for your business.',
         ),
       ],
+    );
+  }
+
+  Widget _buildThemeSelector() {
+    ThemeController? themeController;
+    try {
+      themeController = Get.find<ThemeController>();
+    } catch (e) {
+      print('SettingsScreen: ThemeController not found: $e');
+      return const SizedBox.shrink();
+    }
+
+    return Obx(() {
+      final currentMode = themeController!.themeMode.value;
+      return Column(
+        children: [
+          ListTile(
+            leading: const Icon(Icons.palette, color: Colors.grey),
+            title: const Text(
+              'Theme',
+              style: TextStyle(fontWeight: FontWeight.w500),
+            ),
+            subtitle: Text(
+              _getThemeModeLabel(currentMode),
+              style: const TextStyle(fontSize: 12),
+            ),
+            trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+            onTap: () => _showThemeDialog(themeController!),
+          ),
+        ],
+      );
+    });
+  }
+
+  String _getThemeModeLabel(ThemeMode mode) {
+    switch (mode) {
+      case ThemeMode.light:
+        return 'Light';
+      case ThemeMode.dark:
+        return 'Dark';
+      case ThemeMode.system:
+        return 'System Default';
+    }
+  }
+
+  void _showThemeDialog(ThemeController themeController) {
+    showDialog(
+      context: Get.context!,
+      builder: (context) => AlertDialog(
+        title: const Text('Choose Theme'),
+        content: Obx(() {
+          final currentMode = themeController.themeMode.value;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RadioListTile<ThemeMode>(
+                title: const Text('Light'),
+                value: ThemeMode.light,
+                groupValue: currentMode,
+                onChanged: (value) {
+                  if (value != null) {
+                    themeController.setThemeMode(value);
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+              RadioListTile<ThemeMode>(
+                title: const Text('Dark'),
+                value: ThemeMode.dark,
+                groupValue: currentMode,
+                onChanged: (value) {
+                  if (value != null) {
+                    themeController.setThemeMode(value);
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+              RadioListTile<ThemeMode>(
+                title: const Text('System Default'),
+                value: ThemeMode.system,
+                groupValue: currentMode,
+                onChanged: (value) {
+                  if (value != null) {
+                    themeController.setThemeMode(value);
+                    Navigator.pop(context);
+                  }
+                },
+              ),
+            ],
+          );
+        }),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 

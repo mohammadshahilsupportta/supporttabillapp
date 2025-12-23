@@ -9,6 +9,7 @@ import 'core/services/storage_service.dart';
 import 'core/services/supabase_service.dart';
 import 'core/theme/app_theme.dart';
 import 'presentation/controllers/auth_controller.dart';
+import 'presentation/controllers/theme_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +46,13 @@ void main() async {
     print('Error registering AuthController: $e');
   }
 
+  // Register ThemeController globally
+  try {
+    Get.put<ThemeController>(ThemeController(), permanent: true);
+  } catch (e) {
+    print('Error registering ThemeController: $e');
+  }
+
   runApp(const MyApp());
 }
 
@@ -53,14 +61,19 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: 'Supportta Bill Book',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      initialRoute: AppRoutes.splash,
-      getPages: AppRoutes.routes,
+    // Get theme controller to observe theme changes
+    final themeController = Get.find<ThemeController>();
+
+    return Obx(
+      () => GetMaterialApp(
+        title: 'Supportta Bill Book',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: themeController.themeMode.value,
+        initialRoute: AppRoutes.splash,
+        getPages: AppRoutes.routes,
+      ),
     );
   }
 }
