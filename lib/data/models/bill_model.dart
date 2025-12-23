@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 // Payment Mode Enum
 enum PaymentMode {
   cash('cash'),
@@ -148,6 +150,24 @@ class BillItem {
   });
 
   factory BillItem.fromJson(Map<String, dynamic> json) {
+    // Handle serial_numbers - can be JSON string or List
+    List<String>? serialNumbers;
+    if (json['serial_numbers'] != null) {
+      if (json['serial_numbers'] is String) {
+        try {
+          // Try to parse JSON string
+          final parsed = jsonDecode(json['serial_numbers'] as String);
+          if (parsed is List) {
+            serialNumbers = parsed.cast<String>();
+          }
+        } catch (_) {
+          // If parsing fails, ignore
+        }
+      } else if (json['serial_numbers'] is List) {
+        serialNumbers = List<String>.from(json['serial_numbers'] as List);
+      }
+    }
+
     return BillItem(
       id: json['id'] as String,
       billId: json['bill_id'] as String,
@@ -158,14 +178,12 @@ class BillItem {
       purchasePrice: json['purchase_price'] != null
           ? (json['purchase_price'] as num).toDouble()
           : null,
-      gstRate: (json['gst_rate'] as num).toDouble(),
-      gstAmount: (json['gst_amount'] as num).toDouble(),
-      discount: (json['discount'] as num).toDouble(),
-      profitAmount: (json['profit_amount'] as num).toDouble(),
+      gstRate: (json['gst_rate'] as num?)?.toDouble() ?? 0.0,
+      gstAmount: (json['gst_amount'] as num?)?.toDouble() ?? 0.0,
+      discount: (json['discount'] as num?)?.toDouble() ?? 0.0,
+      profitAmount: (json['profit_amount'] as num?)?.toDouble() ?? 0.0,
       totalAmount: (json['total_amount'] as num).toDouble(),
-      serialNumbers: json['serial_numbers'] != null
-          ? List<String>.from(json['serial_numbers'] as List)
-          : null,
+      serialNumbers: serialNumbers,
     );
   }
 

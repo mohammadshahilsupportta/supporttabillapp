@@ -71,14 +71,35 @@ class BillingDataSource {
           .eq('id', billId)
           .single();
 
-      final itemsData = await _supabase
-          .from('bill_items')
-          .select()
-          .eq('bill_id', billId);
+      // Fetch items separately with error handling
+      List<BillItem> items = [];
+      try {
+        print('[BillDetail] Fetching bill items for bill_id: $billId');
+        final itemsData = await _supabase
+            .from('bill_items')
+            .select()
+            .eq('bill_id', billId);
 
-      final items = (itemsData as List)
-          .map((json) => BillItem.fromJson(json))
-          .toList();
+        print('[BillDetail] Items data received. Type: ${itemsData.runtimeType}, Count: ${(itemsData as List).length}');
+        
+        items = (itemsData as List)
+            .map((json) {
+              try {
+                return BillItem.fromJson(json as Map<String, dynamic>);
+              } catch (parseError) {
+                print('[BillDetail] Error parsing bill item: $parseError');
+                print('[BillDetail] Item JSON: $json');
+                rethrow;
+              }
+            })
+            .toList();
+        print('[BillDetail] Successfully parsed ${items.length} items');
+      } catch (itemsError) {
+        // If items fetch fails, log the error but continue with empty items list
+        print('[BillDetail] Error fetching bill items: $itemsError');
+        print('[BillDetail] Error type: ${itemsError.runtimeType}');
+        items = [];
+      }
 
       final bill = Bill.fromJson(billData);
       return bill.copyWith(items: items);

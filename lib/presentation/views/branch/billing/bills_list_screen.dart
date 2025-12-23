@@ -494,7 +494,7 @@ class _BillsListScreenState extends State<BillsListScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
         onTap: () {
-          Get.toNamed('/bills/${bill.id}');
+          Get.toNamed(AppRoutes.billDetail.replaceAll(':id', bill.id));
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
