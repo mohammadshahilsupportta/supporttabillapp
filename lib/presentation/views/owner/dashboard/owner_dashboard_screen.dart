@@ -238,12 +238,12 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 ),
                 _buildActionButton(
                   context,
-                  Icons.inventory_2,
-                  'Stock',
+                  Icons.person,
+                  'Customers',
                   Colors.blue,
                   () {
                     Navigator.pop(context);
-                    Get.toNamed(AppRoutes.stockList);
+                    Get.toNamed(AppRoutes.customersList);
                   },
                 ),
                 _buildActionButton(

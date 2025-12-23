@@ -150,12 +150,12 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
                 ),
                 _buildActionButton(
                   context,
-                  Icons.add_box,
-                  'Add Stock',
+                  Icons.person,
+                  'Customers',
                   Colors.orange,
                   () {
                     Navigator.pop(context);
-                    Get.toNamed(AppRoutes.stockIn);
+                    Get.toNamed(AppRoutes.customersList);
                   },
                 ),
                 _buildActionButton(
@@ -465,10 +465,10 @@ class _DashboardTab extends StatelessWidget {
                 ),
                 _buildActionCard(
                   context,
-                  'Add Stock',
-                  Icons.add_box,
+                  'Customers',
+                  Icons.person,
                   Colors.orange,
-                  () => Get.toNamed(AppRoutes.stockIn),
+                  () => Get.toNamed(AppRoutes.customersList),
                 ),
                 _buildActionCard(
                   context,
