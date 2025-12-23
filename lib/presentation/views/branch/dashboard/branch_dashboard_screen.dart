@@ -130,19 +130,9 @@ class _BranchDashboardScreenState extends State<BranchDashboardScreen> {
               children: [
                 _buildActionButton(
                   context,
-                  Icons.add_shopping_cart,
-                  'New Bill',
+                  Icons.shopping_cart,
+                  'Order',
                   Colors.green,
-                  () {
-                    Navigator.pop(context);
-                    Get.toNamed(AppRoutes.posBilling);
-                  },
-                ),
-                _buildActionButton(
-                  context,
-                  Icons.receipt_long,
-                  'View Bills',
-                  Colors.blue,
                   () {
                     Navigator.pop(context);
                     Get.toNamed(AppRoutes.billsList);
@@ -451,16 +441,9 @@ class _DashboardTab extends StatelessWidget {
               children: [
                 _buildActionCard(
                   context,
-                  'New Bill',
-                  Icons.add_shopping_cart,
+                  'Order',
+                  Icons.shopping_cart,
                   Colors.green,
-                  () => Get.toNamed(AppRoutes.posBilling),
-                ),
-                _buildActionCard(
-                  context,
-                  'View Bills',
-                  Icons.receipt_long,
-                  Colors.blue,
                   () => Get.toNamed(AppRoutes.billsList),
                 ),
                 _buildActionCard(

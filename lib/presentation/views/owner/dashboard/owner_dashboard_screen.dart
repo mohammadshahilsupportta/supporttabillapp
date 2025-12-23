@@ -229,11 +229,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 _buildActionButton(
                   context,
                   Icons.shopping_cart,
-                  'New Bill',
+                  'Order',
                   Colors.green,
                   () {
                     Navigator.pop(context);
-                    Get.toNamed(AppRoutes.posBilling);
+                    Get.toNamed(AppRoutes.billsList);
                   },
                 ),
                 _buildActionButton(
@@ -244,16 +244,6 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                   () {
                     Navigator.pop(context);
                     Get.toNamed(AppRoutes.customersList);
-                  },
-                ),
-                _buildActionButton(
-                  context,
-                  Icons.receipt_long,
-                  'Bills',
-                  Colors.orange,
-                  () {
-                    Navigator.pop(context);
-                    Get.toNamed(AppRoutes.billsList);
                   },
                 ),
                 _buildActionButton(
