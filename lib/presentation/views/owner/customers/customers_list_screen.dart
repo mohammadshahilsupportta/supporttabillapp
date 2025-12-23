@@ -32,12 +32,12 @@ class _CustomersListScreenState extends State<CustomersListScreen> {
       appBar: AppBar(
         title: const Text('Customers'),
         elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: () => cc.refreshCustomers(),
-          ),
-        ],
+        // actions: [
+        //   IconButton(
+        //     icon: const Icon(Icons.refresh),
+        //     onPressed: () => cc.refreshCustomers(),
+        //   ),
+        // ],
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => Get.toNamed(AppRoutes.customerCreate),
@@ -47,29 +47,129 @@ class _CustomersListScreenState extends State<CustomersListScreen> {
       ),
       body: Column(
         children: [
-          // Search Bar
+          // Filters Bar
           Padding(
             padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search customers...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          cc.searchCustomers('');
-                        },
-                      )
-                    : null,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    // Search Bar
+                    Expanded(
+                      child: TextField(
+                        controller: _searchController,
+                        decoration: InputDecoration(
+                          hintText: 'Search customers...',
+                          prefixIcon: const Icon(Icons.search),
+                          suffixIcon: _searchController.text.isNotEmpty
+                              ? IconButton(
+                                  icon: const Icon(Icons.clear),
+                                  onPressed: () {
+                                    _searchController.clear();
+                                    cc.searchCustomers('');
+                                  },
+                                )
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          filled: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
+                        ),
+                        onChanged: (value) => cc.searchCustomers(value),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Status Filter Dropdown
+                    Obx(
+                      () => Container(
+                        width: 140,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                          color: theme.cardColor,
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: cc.statusFilter.value,
+                            isExpanded: true,
+                            icon: const Icon(Icons.arrow_drop_down),
+                            style: TextStyle(
+                              color: theme.brightness == Brightness.dark
+                                  ? Colors.white
+                                  : Colors.black87,
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'all',
+                                child: Text('All Status'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'active',
+                                child: Text('Active Only'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'inactive',
+                                child: Text('Inactive Only'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                cc.setStatusFilter(value);
+                              }
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                filled: true,
               ),
-              onChanged: (value) => cc.searchCustomers(value),
+            ),
+          ),
+
+          // Statistics Cards
+          Obx(
+            () => Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      'Total Customers',
+                      '${cc.totalCustomers}',
+                      Icons.people,
+                      Colors.blue,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      'Active',
+                      '${cc.activeCustomers}',
+                      Icons.check_circle,
+                      Colors.green,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      'Inactive',
+                      '${cc.inactiveCustomers}',
+                      Icons.cancel,
+                      Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
 
@@ -340,7 +440,13 @@ class _CustomersListScreenState extends State<CustomersListScreen> {
                   child: OutlinedButton.icon(
                     onPressed: () {
                       Navigator.pop(context);
-                      Get.snackbar('Coming Soon', 'Edit customer feature');
+                      final customerId = customer['id'] as String?;
+                      if (customerId != null) {
+                        Get.toNamed(
+                          AppRoutes.customerEdit.replaceAll(':id', customerId),
+                          arguments: {'customerId': customerId},
+                        );
+                      }
                     },
                     icon: const Icon(Icons.edit),
                     label: const Text('Edit'),
@@ -349,12 +455,61 @@ class _CustomersListScreenState extends State<CustomersListScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () {
+                    onPressed: () async {
                       Navigator.pop(context);
-                      Get.snackbar('Coming Soon', 'View purchase history');
+                      final customerId = customer['id'] as String?;
+                      final customerName = customer['name'] ?? 'this customer';
+
+                      if (customerId == null) return;
+
+                      // Show confirmation dialog
+                      final confirm = await Get.dialog<bool>(
+                        AlertDialog(
+                          title: const Text('Delete Customer'),
+                          content: Text(
+                            'Are you sure you want to delete "$customerName"? This action cannot be undone.',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Get.back(result: false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Get.back(result: true),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                              ),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+
+                      if (confirm == true) {
+                        final success = await cc.deleteCustomer(customerId);
+                        if (success) {
+                          Get.snackbar(
+                            'Success',
+                            'Customer deleted successfully',
+                            backgroundColor: Colors.green,
+                            colorText: Colors.white,
+                          );
+                        } else {
+                          Get.snackbar(
+                            'Error',
+                            'Failed to delete customer. Customer may have associated bills.',
+                            backgroundColor: Colors.red,
+                            colorText: Colors.white,
+                          );
+                        }
+                      }
                     },
-                    icon: const Icon(Icons.receipt_long),
-                    label: const Text('History'),
+                    icon: const Icon(Icons.delete),
+                    label: const Text('Delete'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
                 ),
               ],
@@ -386,6 +541,60 @@ class _CustomersListScreenState extends State<CustomersListScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildStatCard(
+    BuildContext context,
+    String title,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Card(
+      elevation: isDark ? 2 : 1,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: color.withValues(alpha: 0.3), width: 2),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: color, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

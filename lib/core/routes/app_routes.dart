@@ -43,6 +43,7 @@ import '../../presentation/views/owner/catalogue/brands_list_screen.dart';
 import '../../presentation/views/owner/catalogue/categories_list_screen.dart';
 import '../../presentation/views/owner/customers/create_customer_screen.dart';
 import '../../presentation/views/owner/customers/customers_list_screen.dart';
+import '../../presentation/views/owner/customers/edit_customer_screen.dart';
 import '../../presentation/views/owner/dashboard/owner_dashboard_screen.dart';
 import '../../presentation/views/owner/users/create_user_screen.dart';
 import '../../presentation/views/owner/users/users_list_screen.dart';
@@ -95,6 +96,7 @@ class AppRoutes {
   static const String brandsList = '/owner/catalogue/brands';
   static const String customersList = '/owner/customers';
   static const String customerCreate = '/owner/customers/create';
+  static const String customerEdit = '/owner/customers/edit/:id';
 
   // Common routes
   static const String settings = '/settings';
@@ -216,6 +218,13 @@ class AppRoutes {
     GetPage(
       name: customerCreate,
       page: () => const CreateCustomerScreen(),
+      binding: BindingsBuilder(() {
+        Get.lazyPut<CustomerController>(() => CustomerController());
+      }),
+    ),
+    GetPage(
+      name: customerEdit,
+      page: () => const EditCustomerScreen(),
       binding: BindingsBuilder(() {
         Get.lazyPut<CustomerController>(() => CustomerController());
       }),

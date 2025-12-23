@@ -7,14 +7,21 @@ class CustomerDataSource {
 
   // Get all customers for a tenant
   Future<List<Map<String, dynamic>>> getCustomersByTenant(
-    String tenantId,
-  ) async {
+    String tenantId, {
+    bool? isActive,
+  }) async {
     try {
-      final response = await _client
+      var query = _client
           .from('customers')
           .select('*')
-          .eq('tenant_id', tenantId)
-          .order('created_at', ascending: false);
+          .eq('tenant_id', tenantId);
+
+      // Apply status filter if provided
+      if (isActive != null) {
+        query = query.eq('is_active', isActive);
+      }
+
+      final response = await query.order('created_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -42,15 +49,22 @@ class CustomerDataSource {
   // Search customers
   Future<List<Map<String, dynamic>>> searchCustomers(
     String tenantId,
-    String query,
-  ) async {
+    String query, {
+    bool? isActive,
+  }) async {
     try {
-      final response = await _client
+      var searchQuery = _client
           .from('customers')
           .select('*')
           .eq('tenant_id', tenantId)
-          .or('name.ilike.%$query%,phone.ilike.%$query%,email.ilike.%$query%')
-          .order('name');
+          .or('name.ilike.%$query%,phone.ilike.%$query%,email.ilike.%$query%');
+
+      // Apply status filter if provided
+      if (isActive != null) {
+        searchQuery = searchQuery.eq('is_active', isActive);
+      }
+
+      final response = await searchQuery.order('name');
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -106,6 +120,33 @@ class CustomerDataSource {
       return response;
     } catch (e) {
       print('[CustomerDataSource] Error updating customer: $e');
+      rethrow;
+    }
+  }
+
+  // Delete customer
+  Future<bool> deleteCustomer(String customerId) async {
+    try {
+      // Check if customer has associated bills
+      final billsResponse = await _client
+          .from('bills')
+          .select('id')
+          .eq('customer_id', customerId)
+          .limit(1);
+
+      if (billsResponse.isNotEmpty) {
+        throw Exception(
+            'Cannot delete customer with associated bills. Deactivate instead.');
+      }
+
+      final response = await _client
+          .from('customers')
+          .delete()
+          .eq('id', customerId);
+
+      return true;
+    } catch (e) {
+      print('[CustomerDataSource] Error deleting customer: $e');
       rethrow;
     }
   }

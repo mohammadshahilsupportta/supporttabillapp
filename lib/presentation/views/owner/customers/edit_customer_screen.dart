@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../controllers/customer_controller.dart';
+import '../../../../data/datasources/customer_datasource.dart';
 
-class CreateCustomerScreen extends StatefulWidget {
-  const CreateCustomerScreen({super.key});
+class EditCustomerScreen extends StatefulWidget {
+  const EditCustomerScreen({super.key});
 
   @override
-  State<CreateCustomerScreen> createState() => _CreateCustomerScreenState();
+  State<EditCustomerScreen> createState() => _EditCustomerScreenState();
 }
 
-class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
+class _EditCustomerScreenState extends State<EditCustomerScreen> {
   final _formKey = GlobalKey<FormState>();
   CustomerController? _customerController;
+  final CustomerDataSource _dataSource = CustomerDataSource();
 
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
@@ -21,6 +23,9 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   final _gstController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isLoadingCustomer = true;
+  String? _customerId;
+  Map<String, dynamic>? _customer;
 
   @override
   void initState() {
@@ -28,7 +33,44 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
     try {
       _customerController = Get.find<CustomerController>();
     } catch (e) {
-      print('CreateCustomerScreen: CustomerController not found: $e');
+      print('EditCustomerScreen: CustomerController not found: $e');
+    }
+    _loadCustomer();
+  }
+
+  Future<void> _loadCustomer() async {
+    try {
+      // Get customer ID from route arguments or parameters
+      _customerId = Get.arguments?['customerId'] ??
+          Get.parameters['id'] ??
+          Get.currentRoute.split('/').last;
+
+      if (_customerId == null || _customerId!.isEmpty) {
+        Get.snackbar('Error', 'Customer ID not found');
+        Get.back();
+        return;
+      }
+
+      _customer = await _dataSource.getCustomerById(_customerId!);
+
+      if (_customer == null) {
+        Get.snackbar('Error', 'Customer not found');
+        Get.back();
+        return;
+      }
+
+      // Populate form fields
+      _nameController.text = _customer!['name'] ?? '';
+      _phoneController.text = _customer!['phone'] ?? '';
+      _emailController.text = _customer!['email'] ?? '';
+      _addressController.text = _customer!['address'] ?? '';
+      _gstController.text = _customer!['gst_number'] ?? '';
+
+      setState(() => _isLoadingCustomer = false);
+    } catch (e) {
+      print('EditCustomerScreen: Error loading customer: $e');
+      Get.snackbar('Error', 'Failed to load customer: ${e.toString()}');
+      Get.back();
     }
   }
 
@@ -45,42 +87,47 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_customerController == null) {
-      Get.snackbar('Error', 'Customer controller not available');
+    if (_customerController == null || _customerId == null) {
+      Get.snackbar('Error', 'Customer controller or ID not available');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      final success = await _customerController!.createCustomer(
-        name: _nameController.text.trim(),
-        phone: _phoneController.text.trim().isNotEmpty
+      final updates = <String, dynamic>{
+        'name': _nameController.text.trim(),
+        'phone': _phoneController.text.trim().isNotEmpty
             ? _phoneController.text.trim()
             : null,
-        email: _emailController.text.trim().isNotEmpty
+        'email': _emailController.text.trim().isNotEmpty
             ? _emailController.text.trim()
             : null,
-        address: _addressController.text.trim().isNotEmpty
+        'address': _addressController.text.trim().isNotEmpty
             ? _addressController.text.trim()
             : null,
-        gstNumber: _gstController.text.trim().isNotEmpty
+        'gst_number': _gstController.text.trim().isNotEmpty
             ? _gstController.text.trim()
             : null,
+      };
+
+      final success = await _customerController!.updateCustomer(
+        _customerId!,
+        updates,
       );
 
       if (success) {
         Get.back();
         Get.snackbar(
           'Success',
-          'Customer created successfully',
+          'Customer updated successfully',
           backgroundColor: Colors.green,
           colorText: Colors.white,
         );
       } else {
         Get.snackbar(
           'Error',
-          'Failed to create customer',
+          'Failed to update customer',
           backgroundColor: Colors.red,
           colorText: Colors.white,
         );
@@ -101,8 +148,15 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
+    if (_isLoadingCustomer) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Edit Customer'), elevation: 0),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Add Customer'), elevation: 0),
+      appBar: AppBar(title: const Text('Edit Customer'), elevation: 0),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -276,9 +330,9 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
                           color: Colors.white,
                         ),
                       )
-                    : const Icon(Icons.person_add),
+                    : const Icon(Icons.save),
                 label: Text(
-                  _isLoading ? 'Creating...' : 'Create Customer',
+                  _isLoading ? 'Updating...' : 'Update Customer',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -293,3 +347,4 @@ class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
     );
   }
 }
+

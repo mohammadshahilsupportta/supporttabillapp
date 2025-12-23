@@ -8,8 +8,10 @@ class CustomerController extends GetxController {
   final AuthController _authController = Get.find<AuthController>();
 
   final RxList<Map<String, dynamic>> customers = <Map<String, dynamic>>[].obs;
+  final RxList<Map<String, dynamic>> allCustomers = <Map<String, dynamic>>[].obs; // Store all customers for stats
   final RxBool isLoading = false.obs;
   final RxString searchQuery = ''.obs;
+  final RxString statusFilter = 'all'.obs; // 'all', 'active', 'inactive'
 
   @override
   void onInit() {
@@ -24,8 +26,13 @@ class CustomerController extends GetxController {
       final tenantId = _authController.currentUser.value?.tenantId;
 
       if (tenantId != null) {
-        customers.value = await _dataSource.getCustomersByTenant(tenantId);
+        // Always load all customers for statistics
+        allCustomers.value = await _dataSource.getCustomersByTenant(tenantId);
+        
+        // Apply status filter
+        _applyFilters();
       } else {
+        allCustomers.value = [];
         customers.value = [];
       }
     } catch (e) {
@@ -35,26 +42,38 @@ class CustomerController extends GetxController {
     }
   }
 
+  void _applyFilters() {
+    var filtered = List<Map<String, dynamic>>.from(allCustomers);
+
+    // Apply status filter
+    if (statusFilter.value == 'active') {
+      filtered = filtered.where((c) => c['is_active'] == true).toList();
+    } else if (statusFilter.value == 'inactive') {
+      filtered = filtered.where((c) => c['is_active'] != true).toList();
+    }
+
+    // Apply search filter
+    if (searchQuery.value.isNotEmpty) {
+      final query = searchQuery.value.toLowerCase();
+      filtered = filtered.where((c) {
+        final name = (c['name'] ?? '').toString().toLowerCase();
+        final phone = (c['phone'] ?? '').toString().toLowerCase();
+        final email = (c['email'] ?? '').toString().toLowerCase();
+        return name.contains(query) || phone.contains(query) || email.contains(query);
+      }).toList();
+    }
+
+    customers.value = filtered;
+  }
+
   Future<void> searchCustomers(String query) async {
     searchQuery.value = query;
+    _applyFilters();
+  }
 
-    if (query.isEmpty) {
-      await loadCustomers();
-      return;
-    }
-
-    try {
-      isLoading.value = true;
-      final tenantId = _authController.currentUser.value?.tenantId;
-
-      if (tenantId != null) {
-        customers.value = await _dataSource.searchCustomers(tenantId, query);
-      }
-    } catch (e) {
-      print('[CustomerController] Error searching: $e');
-    } finally {
-      isLoading.value = false;
-    }
+  void setStatusFilter(String filter) {
+    statusFilter.value = filter;
+    _applyFilters();
   }
 
   Future<bool> createCustomer({
@@ -106,11 +125,27 @@ class CustomerController extends GetxController {
     }
   }
 
+  Future<bool> deleteCustomer(String customerId) async {
+    try {
+      isLoading.value = true;
+      await _dataSource.deleteCustomer(customerId);
+      await loadCustomers();
+      return true;
+    } catch (e) {
+      print('[CustomerController] Error deleting customer: $e');
+      return false;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   Future<void> refreshCustomers() async {
     await loadCustomers();
   }
 
-  int get totalCustomers => customers.length;
+  int get totalCustomers => allCustomers.length;
   int get activeCustomers =>
-      customers.where((c) => c['is_active'] == true).length;
+      allCustomers.where((c) => c['is_active'] == true).length;
+  int get inactiveCustomers =>
+      allCustomers.where((c) => c['is_active'] != true).length;
 }
