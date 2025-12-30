@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 
+import '../../../../data/datasources/billing_datasource.dart';
 import '../../../../data/models/bill_model.dart';
 import '../../../controllers/auth_controller.dart';
 import '../../../controllers/billing_controller.dart';
@@ -84,10 +86,12 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   Future<void> _loadBillItems(String billId) async {
     try {
       final controller = Get.find<BillingController>();
-      final fullBill = await controller.getBillById(billId);
-      if (mounted && fullBill != null) {
+      // Use faster items-only fetch
+      final items = await controller.getBillItemsOnly(billId);
+      if (mounted && bill != null) {
         setState(() {
-          bill = fullBill;
+          // Use copyWith from BillExtension
+          bill = bill!.copyWith(items: items);
           isLoadingItems = false;
         });
       }
@@ -460,29 +464,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                     if (bill!.items != null && bill!.items!.isNotEmpty)
                       _buildItemsTable(bill!.items!, theme)
                     else if (isLoadingItems)
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            children: [
-                              const SizedBox(
-                                width: 32,
-                                height: 32,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 3,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                'Loading items...',
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: Colors.grey[600],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
+                      _buildItemsShimmer(theme)
                     else
                       Center(
                         child: Padding(
@@ -660,80 +642,102 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   }
 
   Widget _buildItemsTable(List<BillItem> items, ThemeData theme) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: DataTable(
-        columnSpacing: 16,
-        headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
-        columns: const [
-          DataColumn(
-            label: Text(
-              'Product',
-              style: TextStyle(fontWeight: FontWeight.bold),
+    return Column(
+      children: items.asMap().entries.map((entry) {
+        final index = entry.key;
+        final item = entry.value;
+
+        return Container(
+          margin: EdgeInsets.only(bottom: index < items.length - 1 ? 12 : 0),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.brightness == Brightness.dark
+                ? Colors.grey[800]
+                : Colors.grey[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: theme.brightness == Brightness.dark
+                  ? Colors.grey[700]!
+                  : Colors.grey[200]!,
             ),
           ),
-          DataColumn(
-            label: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold)),
-            numeric: true,
-          ),
-          DataColumn(
-            label: Text(
-              'Unit Price',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            numeric: true,
-          ),
-          DataColumn(
-            label: Text(
-              'GST Rate',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            numeric: true,
-          ),
-          DataColumn(
-            label: Text(
-              'Discount',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            numeric: true,
-          ),
-          DataColumn(
-            label: Text('Total', style: TextStyle(fontWeight: FontWeight.bold)),
-            numeric: true,
-          ),
-        ],
-        rows: items.map((item) {
-          return DataRow(
-            cells: [
-              DataCell(
-                Text(
-                  item.productName,
-                  style: const TextStyle(fontWeight: FontWeight.w500),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Product Name and Total
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      item.productName,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '₹${item.totalAmount.toStringAsFixed(2)}',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: theme.primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+
+              // Quantity x Price
+              Text(
+                '${item.quantity} × ₹${item.unitPrice.toStringAsFixed(2)}',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
                 ),
               ),
-              DataCell(Text(item.quantity.toString())),
-              DataCell(Text('₹${item.unitPrice.toStringAsFixed(2)}')),
-              DataCell(Text('${item.gstRate.toStringAsFixed(1)}%')),
-              DataCell(
-                Text(
-                  '₹${item.discount.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    color: item.discount > 0 ? Colors.red : Colors.grey,
+              const SizedBox(height: 8),
+
+              // Details Row (GST, Discount)
+              Row(
+                children: [
+                  _buildItemDetailChip(
+                    'GST: ${item.gstRate.toStringAsFixed(1)}%',
+                    theme,
                   ),
-                ),
-              ),
-              DataCell(
-                Text(
-                  '₹${item.totalAmount.toStringAsFixed(2)}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    color: theme.primaryColor,
-                  ),
-                ),
+                  const SizedBox(width: 8),
+                  if (item.discount > 0)
+                    _buildItemDetailChip(
+                      'Disc: ₹${item.discount.toStringAsFixed(2)}',
+                      theme,
+                      isDiscount: true,
+                    ),
+                ],
               ),
             ],
-          );
-        }).toList(),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildItemDetailChip(
+    String text,
+    ThemeData theme, {
+    bool isDiscount = false,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDiscount
+            ? Colors.red.withValues(alpha: 0.1)
+            : theme.primaryColor.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Text(
+        text,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: isDiscount ? Colors.red : theme.primaryColor,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -756,6 +760,92 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildItemsShimmer(ThemeData theme) {
+    final isDark = theme.brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey.shade800 : Colors.grey.shade300;
+    final highlightColor = isDark ? Colors.grey.shade700 : Colors.grey.shade100;
+
+    return Column(
+      children: List.generate(3, (index) {
+        return Shimmer.fromColors(
+          baseColor: baseColor,
+          highlightColor: highlightColor,
+          child: Container(
+            margin: EdgeInsets.only(bottom: index < 2 ? 12 : 0),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.grey[800] : Colors.grey[50],
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Product Name and Total row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      height: 18,
+                      width: 150,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    Container(
+                      height: 18,
+                      width: 80,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Quantity row
+                Container(
+                  height: 14,
+                  width: 100,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                // Chips row
+                Row(
+                  children: [
+                    Container(
+                      height: 24,
+                      width: 60,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      height: 24,
+                      width: 70,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 }

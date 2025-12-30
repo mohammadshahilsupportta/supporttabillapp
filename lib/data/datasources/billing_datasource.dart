@@ -80,19 +80,19 @@ class BillingDataSource {
             .select()
             .eq('bill_id', billId);
 
-        print('[BillDetail] Items data received. Type: ${itemsData.runtimeType}, Count: ${(itemsData as List).length}');
-        
-        items = (itemsData as List)
-            .map((json) {
-              try {
-                return BillItem.fromJson(json as Map<String, dynamic>);
-              } catch (parseError) {
-                print('[BillDetail] Error parsing bill item: $parseError');
-                print('[BillDetail] Item JSON: $json');
-                rethrow;
-              }
-            })
-            .toList();
+        print(
+          '[BillDetail] Items data received. Type: ${itemsData.runtimeType}, Count: ${(itemsData as List).length}',
+        );
+
+        items = (itemsData as List).map((json) {
+          try {
+            return BillItem.fromJson(json as Map<String, dynamic>);
+          } catch (parseError) {
+            print('[BillDetail] Error parsing bill item: $parseError');
+            print('[BillDetail] Item JSON: $json');
+            rethrow;
+          }
+        }).toList();
         print('[BillDetail] Successfully parsed ${items.length} items');
       } catch (itemsError) {
         // If items fetch fails, log the error but continue with empty items list
@@ -105,6 +105,22 @@ class BillingDataSource {
       return bill.copyWith(items: items);
     } catch (e) {
       throw Exception('Failed to fetch bill: ${e.toString()}');
+    }
+  }
+
+  // Fast: Get only bill items (without fetching bill again)
+  Future<List<BillItem>> getBillItemsOnly(String billId) async {
+    try {
+      final itemsData = await _supabase
+          .from('bill_items')
+          .select()
+          .eq('bill_id', billId);
+
+      return (itemsData as List)
+          .map((json) => BillItem.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to fetch bill items: ${e.toString()}');
     }
   }
 

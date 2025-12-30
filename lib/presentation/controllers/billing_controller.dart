@@ -302,6 +302,15 @@ class BillingController extends GetxController {
     }
   }
 
+  // Fast: Get only bill items (without fetching full bill)
+  Future<List<BillItem>> getBillItemsOnly(String billId) async {
+    try {
+      return await _dataSource.getBillItemsOnly(billId);
+    } catch (e) {
+      return [];
+    }
+  }
+
   // Get today's sales
   Future<Map<String, dynamic>> getTodaySales() async {
     try {
