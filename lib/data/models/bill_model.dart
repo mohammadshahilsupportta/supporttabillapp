@@ -85,7 +85,7 @@ class Bill {
           : null,
       paymentMode: PaymentMode.fromString(json['payment_mode'] as String),
       createdBy: json['created_by'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
       items: json['items'] != null
           ? (json['items'] as List)
                 .map((item) => BillItem.fromJson(item as Map<String, dynamic>))
@@ -240,10 +240,12 @@ class PaymentTransaction {
       branchId: json['branch_id'] as String,
       amount: (json['amount'] as num).toDouble(),
       paymentMode: PaymentMode.fromString(json['payment_mode'] as String),
-      transactionDate: DateTime.parse(json['transaction_date'] as String),
+      transactionDate: DateTime.parse(
+        json['transaction_date'] as String,
+      ).toLocal(),
       notes: json['notes'] as String?,
       createdBy: json['created_by'] as String,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String).toLocal(),
     );
   }
 

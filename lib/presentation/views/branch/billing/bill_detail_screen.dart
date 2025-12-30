@@ -3,9 +3,9 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../data/models/bill_model.dart';
+import '../../../controllers/auth_controller.dart';
 import '../../../controllers/billing_controller.dart';
 import '../../../controllers/branch_controller.dart';
-import '../../../controllers/auth_controller.dart';
 
 class BillDetailScreen extends StatefulWidget {
   const BillDetailScreen({super.key});
@@ -17,6 +17,7 @@ class BillDetailScreen extends StatefulWidget {
 class _BillDetailScreenState extends State<BillDetailScreen> {
   Bill? bill;
   bool isLoading = true;
+  bool isLoadingItems = false;
   bool isProcessingPayment = false;
   bool isUpdatingItem = false;
   String? editingItemId;
@@ -38,19 +39,35 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
 
   Future<void> _loadBill() async {
     try {
-      setState(() => isLoading = true);
-      final controller = Get.find<BillingController>();
       final billId = Get.parameters['id'];
       if (billId == null) {
         throw Exception('Bill ID not found');
       }
+
+      // Check if bill was passed as argument (fast path)
+      final passedBill = Get.arguments as Bill?;
+      if (passedBill != null) {
+        // Use passed bill immediately - screen loads instantly!
+        if (mounted) {
+          setState(() {
+            bill = passedBill;
+            isLoading = false;
+          });
+        }
+
+        // Load items in background if not already present
+        if (passedBill.items == null || passedBill.items!.isEmpty) {
+          setState(() => isLoadingItems = true);
+          _loadBillItems(billId);
+        }
+        return;
+      }
+
+      // Fallback: fetch full bill (slower path - for deep links)
+      setState(() => isLoading = true);
+      final controller = Get.find<BillingController>();
       final loadedBill = await controller.getBillById(billId);
       if (mounted) {
-        print('Bill loaded: ${loadedBill?.invoiceNumber}');
-        print('Bill items count: ${loadedBill?.items?.length ?? 0}');
-        if (loadedBill?.items != null) {
-          print('Items: ${loadedBill!.items!.map((i) => i.productName).toList()}');
-        }
         setState(() {
           bill = loadedBill;
           isLoading = false;
@@ -60,6 +77,25 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       if (mounted) {
         setState(() => isLoading = false);
         Get.snackbar('Error', 'Failed to load bill: ${e.toString()}');
+      }
+    }
+  }
+
+  Future<void> _loadBillItems(String billId) async {
+    try {
+      final controller = Get.find<BillingController>();
+      final fullBill = await controller.getBillById(billId);
+      if (mounted && fullBill != null) {
+        setState(() {
+          bill = fullBill;
+          isLoadingItems = false;
+        });
+      }
+    } catch (e) {
+      // Items loading failed silently - bill info is still visible
+      print('Failed to load bill items: $e');
+      if (mounted) {
+        setState(() => isLoadingItems = false);
       }
     }
   }
@@ -93,7 +129,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
       // TODO: Implement payment collection
       // final controller = Get.find<BillingController>();
       // await controller.addPayment(billId: bill!.id, amount: amount, paymentMode: selectedPaymentMode);
-      
+
       paymentAmountController.clear();
       if (mounted) {
         Navigator.pop(context); // Close dialog
@@ -111,7 +147,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
   void _showPaymentDialog() {
     final dueAmount = (bill!.totalAmount - (bill!.paidAmount ?? 0));
     paymentAmountController.text = dueAmount.toStringAsFixed(2);
-    
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -132,9 +168,7 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
               const SizedBox(height: 16),
               DropdownButtonFormField<PaymentMode>(
                 value: selectedPaymentMode,
-                decoration: const InputDecoration(
-                  labelText: 'Payment Mode',
-                ),
+                decoration: const InputDecoration(labelText: 'Payment Mode'),
                 items: PaymentMode.values.map((mode) {
                   return DropdownMenuItem(
                     value: mode,
@@ -244,7 +278,10 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 style: TextStyle(color: Colors.white),
               ),
               style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
               ),
             ),
           ),
@@ -255,7 +292,6 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-
             // Order Header Card
             Card(
               child: Padding(
@@ -263,50 +299,51 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
                                 children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.receipt,
-                                        color: theme.primaryColor,
-                                        size: 24,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Flexible(
-                                        child: Text(
-                                          bill!.invoiceNumber,
-                                          style: theme.textTheme.headlineSmall?.copyWith(
+                                  Icon(
+                                    Icons.receipt,
+                                    color: theme.primaryColor,
+                                    size: 24,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      bill!.invoiceNumber,
+                                      style: theme.textTheme.headlineSmall
+                                          ?.copyWith(
                                             fontWeight: FontWeight.bold,
                                           ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    dateFormat.format(bill!.createdAt),
-                                    style: theme.textTheme.bodySmall?.copyWith(
-                                      color: Colors.grey[600],
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                            if (!isFullyPaid)
-                              OutlinedButton.icon(
-                                onPressed: _showPaymentDialog,
-                                icon: const Icon(Icons.payment, size: 18),
-                                label: const Text('Collect Payment'),
+                              const SizedBox(height: 8),
+                              Text(
+                                dateFormat.format(bill!.createdAt),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: Colors.grey[600],
+                                ),
                               ),
-                          ],
+                            ],
+                          ),
                         ),
+                        if (!isFullyPaid)
+                          OutlinedButton.icon(
+                            onPressed: _showPaymentDialog,
+                            icon: const Icon(Icons.payment, size: 18),
+                            label: const Text('Collect Payment'),
+                          ),
+                      ],
+                    ),
                     const Divider(height: 32),
                     // Branch and Customer Info
                     Row(
@@ -390,7 +427,9 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                           ),
                           _buildPaymentStatusItem(
                             'Due Amount',
-                            isFullyPaid ? 'Paid' : '₹${dueAmount.toStringAsFixed(2)}',
+                            isFullyPaid
+                                ? 'Paid'
+                                : '₹${dueAmount.toStringAsFixed(2)}',
                             isFullyPaid ? Colors.green : Colors.red,
                             theme,
                           ),
@@ -420,6 +459,30 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                     const SizedBox(height: 16),
                     if (bill!.items != null && bill!.items!.isNotEmpty)
                       _buildItemsTable(bill!.items!, theme)
+                    else if (isLoadingItems)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            children: [
+                              const SizedBox(
+                                width: 32,
+                                height: 32,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Loading items...',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: Colors.grey[600],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
                     else
                       Center(
                         child: Padding(
@@ -463,7 +526,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                       ),
                     ),
                     const Divider(height: 24),
-                    _buildSummaryRow('Subtotal', '₹${bill!.subtotal.toStringAsFixed(2)}', theme),
+                    _buildSummaryRow(
+                      'Subtotal',
+                      '₹${bill!.subtotal.toStringAsFixed(2)}',
+                      theme,
+                    ),
                     if (bill!.discount > 0) ...[
                       const SizedBox(height: 12),
                       _buildSummaryRow(
@@ -474,7 +541,11 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
                       ),
                     ],
                     const SizedBox(height: 12),
-                    _buildSummaryRow('GST', '₹${bill!.gstAmount.toStringAsFixed(2)}', theme),
+                    _buildSummaryRow(
+                      'GST',
+                      '₹${bill!.gstAmount.toStringAsFixed(2)}',
+                      theme,
+                    ),
                     const Divider(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -526,7 +597,12 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     );
   }
 
-  Widget _buildInfoItem(IconData icon, String label, String value, ThemeData theme) {
+  Widget _buildInfoItem(
+    IconData icon,
+    String label,
+    String value,
+    ThemeData theme,
+  ) {
     return Row(
       children: [
         Icon(icon, size: 16, color: Colors.grey[600]),
@@ -590,21 +666,35 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
         columnSpacing: 16,
         headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
         columns: const [
-          DataColumn(label: Text('Product', style: TextStyle(fontWeight: FontWeight.bold))),
+          DataColumn(
+            label: Text(
+              'Product',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
           DataColumn(
             label: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold)),
             numeric: true,
           ),
           DataColumn(
-            label: Text('Unit Price', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: Text(
+              'Unit Price',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             numeric: true,
           ),
           DataColumn(
-            label: Text('GST Rate', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: Text(
+              'GST Rate',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             numeric: true,
           ),
           DataColumn(
-            label: Text('Discount', style: TextStyle(fontWeight: FontWeight.bold)),
+            label: Text(
+              'Discount',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             numeric: true,
           ),
           DataColumn(
@@ -648,7 +738,12 @@ class _BillDetailScreenState extends State<BillDetailScreen> {
     );
   }
 
-  Widget _buildSummaryRow(String label, String value, ThemeData theme, {Color? color}) {
+  Widget _buildSummaryRow(
+    String label,
+    String value,
+    ThemeData theme, {
+    Color? color,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [

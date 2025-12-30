@@ -632,7 +632,9 @@ class _DashboardTab extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         ...dc.recentBills.take(3).map((bill) {
-          final createdAt = DateTime.tryParse(bill['created_at'] ?? '');
+          final createdAt = DateTime.tryParse(
+            bill['created_at'] ?? '',
+          )?.toLocal();
           return Card(
             margin: const EdgeInsets.only(bottom: 8),
             child: ListTile(
@@ -758,7 +760,9 @@ class _BillingTab extends StatelessWidget {
           itemCount: dc.recentBills.length,
           itemBuilder: (context, index) {
             final bill = dc.recentBills[index];
-            final createdAt = DateTime.tryParse(bill['created_at'] ?? '');
+            final createdAt = DateTime.tryParse(
+              bill['created_at'] ?? '',
+            )?.toLocal();
 
             return Card(
               margin: const EdgeInsets.only(bottom: 12),
