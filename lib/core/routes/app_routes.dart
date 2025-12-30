@@ -16,7 +16,7 @@ import '../../presentation/views/auth/splash_screen.dart';
 import '../../presentation/views/branch/billing/bill_detail_screen.dart';
 import '../../presentation/views/branch/billing/billing_screen.dart';
 import '../../presentation/views/branch/billing/bills_list_screen.dart';
-import '../../presentation/views/branch/billing/pos_billing_screen.dart';
+import '../../presentation/views/branch/billing/create_order_screen.dart';
 import '../../presentation/views/branch/dashboard/branch_dashboard_screen.dart';
 import '../../presentation/views/branch/expenses/create_expense_screen.dart';
 import '../../presentation/views/branch/expenses/expenses_list_screen.dart';
@@ -251,10 +251,12 @@ class AppRoutes {
     ),
     GetPage(
       name: posBilling,
-      page: () => const POSBillingScreen(),
+      page: () => const CreateOrderScreen(),
       binding: BindingsBuilder(() {
         Get.lazyPut<BillingController>(() => BillingController());
         Get.lazyPut<ProductController>(() => ProductController());
+        Get.lazyPut<CustomerController>(() => CustomerController());
+        Get.lazyPut<StockController>(() => StockController());
       }),
     ),
     GetPage(
