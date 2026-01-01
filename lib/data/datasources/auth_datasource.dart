@@ -18,7 +18,7 @@ class AuthDataSource {
       );
 
       if (response.user == null) {
-        throw Exception('Login failed. Please check your credentials.');
+        throw Exception('Invalid email or password. Please try again.');
       }
 
       // Fetch user profile from users table
@@ -31,8 +31,49 @@ class AuthDataSource {
 
       return User.fromJson(userData);
     } catch (e) {
-      throw Exception('Login failed: ${e.toString()}');
+      // Convert Supabase errors to human-readable messages
+      final errorMessage = _getReadableAuthError(e.toString());
+      throw Exception(errorMessage);
     }
+  }
+
+  // Convert technical auth errors to user-friendly messages
+  String _getReadableAuthError(String error) {
+    final lowerError = error.toLowerCase();
+
+    if (lowerError.contains('invalid login credentials') ||
+        lowerError.contains('invalid_credentials') ||
+        lowerError.contains('invalid password') ||
+        lowerError.contains('wrong password')) {
+      return 'Invalid email or password. Please try again.';
+    }
+
+    if (lowerError.contains('user not found') ||
+        lowerError.contains('no user found')) {
+      return 'No account found with this email address.';
+    }
+
+    if (lowerError.contains('email not confirmed')) {
+      return 'Please verify your email before logging in.';
+    }
+
+    if (lowerError.contains('too many requests') ||
+        lowerError.contains('rate limit')) {
+      return 'Too many login attempts. Please try again later.';
+    }
+
+    if (lowerError.contains('network') ||
+        lowerError.contains('socket') ||
+        lowerError.contains('connection')) {
+      return 'Network error. Please check your internet connection.';
+    }
+
+    if (lowerError.contains('disabled') || lowerError.contains('blocked')) {
+      return 'This account has been disabled. Please contact support.';
+    }
+
+    // Default fallback
+    return 'Login failed. Please check your credentials and try again.';
   }
 
   // Sign out

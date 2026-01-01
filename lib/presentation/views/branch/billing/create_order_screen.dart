@@ -692,120 +692,177 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
     );
   }
 
-  // Simple Customer Picker
+  // Simple Customer Picker with Search
   void _showSimpleCustomerPicker() {
+    final searchController = TextEditingController();
+
     Get.bottomSheet(
-      Container(
-        height: MediaQuery.of(context).size.height * 0.6,
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-        ),
-        child: Column(
-          children: [
-            // Handle
-            Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.grey[400],
-                borderRadius: BorderRadius.circular(2),
+      StatefulBuilder(
+        builder: (context, setBottomSheetState) {
+          // Filter customers based on search query
+          final searchQuery = searchController.text.toLowerCase().trim();
+          final allCustomers = _customerController?.customers ?? [];
+          final filteredCustomers = searchQuery.isEmpty
+              ? allCustomers
+              : allCustomers.where((customer) {
+                  final name =
+                      (customer['name'] as String?)?.toLowerCase() ?? '';
+                  final phone =
+                      (customer['phone'] as String?)?.toLowerCase() ?? '';
+                  return name.contains(searchQuery) ||
+                      phone.contains(searchQuery);
+                }).toList();
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.7,
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
               ),
             ),
-            // Title
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Text(
-                'Select Customer',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-            ),
-            const SizedBox(height: 8),
-            // Walk-in option
-            ListTile(
-              leading: const Icon(Icons.person_outline),
-              title: const Text('Walk-in Customer'),
-              subtitle: const Text('No customer selected'),
-              onTap: () {
-                setState(() {
-                  _selectedCustomerId = null;
-                  _customerNameController.clear();
-                  _customerPhoneController.clear();
-                });
-                Get.back();
-              },
-            ),
-            const Divider(),
-            // Customer List
-            Expanded(
-              child:
-                  _customerController == null ||
-                      _customerController!.customers.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.people_outline,
-                            size: 48,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'No customers',
-                            style: TextStyle(color: Colors.grey[600]),
-                          ),
-                        ],
+            child: Column(
+              children: [
+                // Handle
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.grey[400],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                // Title
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  child: Text(
+                    'Select Customer',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Search Field
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextField(
+                    controller: searchController,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      hintText: 'Search by name or phone...',
+                      prefixIcon: const Icon(Icons.search),
+                      suffixIcon: searchController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                searchController.clear();
+                                setBottomSheetState(() {});
+                              },
+                            )
+                          : null,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    )
-                  : ListView.builder(
-                      itemCount: _customerController!.customers.length,
-                      itemBuilder: (context, index) {
-                        final customer = _customerController!.customers[index];
-                        final isSelected =
-                            _selectedCustomerId == customer['id'];
-                        return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: isSelected
-                                ? Theme.of(context).primaryColor
-                                : Colors.grey[300],
-                            child: Text(
-                              (customer['name'] as String?)
-                                      ?.substring(0, 1)
-                                      .toUpperCase() ??
-                                  '?',
-                              style: TextStyle(
-                                color: isSelected
-                                    ? Colors.white
-                                    : Colors.grey[700],
-                              ),
-                            ),
-                          ),
-                          title: Text(customer['name'] ?? 'Unknown'),
-                          subtitle: Text(customer['phone'] ?? 'No phone'),
-                          trailing: isSelected
-                              ? Icon(
-                                  Icons.check,
-                                  color: Theme.of(context).primaryColor,
-                                )
-                              : null,
-                          onTap: () {
-                            setState(() {
-                              _selectedCustomerId = customer['id'];
-                              _customerNameController.text =
-                                  customer['name'] ?? '';
-                              _customerPhoneController.text =
-                                  customer['phone'] ?? '';
-                            });
-                            Get.back();
-                          },
-                        );
-                      },
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                     ),
+                    onChanged: (_) => setBottomSheetState(() {}),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Walk-in option (only show when not searching)
+                if (searchQuery.isEmpty) ...[
+                  ListTile(
+                    leading: const Icon(Icons.person_outline),
+                    title: const Text('Walk-in Customer'),
+                    subtitle: const Text('No customer selected'),
+                    onTap: () {
+                      setState(() {
+                        _selectedCustomerId = null;
+                        _customerNameController.clear();
+                        _customerPhoneController.clear();
+                      });
+                      Get.back();
+                    },
+                  ),
+                  const Divider(),
+                ],
+                // Customer List
+                Expanded(
+                  child: filteredCustomers.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                searchQuery.isNotEmpty
+                                    ? Icons.search_off
+                                    : Icons.people_outline,
+                                size: 48,
+                                color: Colors.grey[400],
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                searchQuery.isNotEmpty
+                                    ? 'No customers found for "$searchQuery"'
+                                    : 'No customers',
+                                style: TextStyle(color: Colors.grey[600]),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.builder(
+                          itemCount: filteredCustomers.length,
+                          itemBuilder: (context, index) {
+                            final customer = filteredCustomers[index];
+                            final isSelected =
+                                _selectedCustomerId == customer['id'];
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor: isSelected
+                                    ? Theme.of(context).primaryColor
+                                    : Colors.grey[300],
+                                child: Text(
+                                  (customer['name'] as String?)
+                                          ?.substring(0, 1)
+                                          .toUpperCase() ??
+                                      '?',
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? Colors.white
+                                        : Colors.grey[700],
+                                  ),
+                                ),
+                              ),
+                              title: Text(customer['name'] ?? 'Unknown'),
+                              subtitle: Text(customer['phone'] ?? 'No phone'),
+                              trailing: isSelected
+                                  ? Icon(
+                                      Icons.check,
+                                      color: Theme.of(context).primaryColor,
+                                    )
+                                  : null,
+                              onTap: () {
+                                setState(() {
+                                  _selectedCustomerId = customer['id'];
+                                  _customerNameController.text =
+                                      customer['name'] ?? '';
+                                  _customerPhoneController.text =
+                                      customer['phone'] ?? '';
+                                });
+                                Get.back();
+                              },
+                            );
+                          },
+                        ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
       isScrollControlled: true,
     );
