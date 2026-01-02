@@ -203,19 +203,41 @@ class BillingDataSource {
 
       await _supabase.from('bill_items').insert(itemsToInsert);
 
-      // Update stock for each item (create stock ledger entry)
+      // Update stock for each item (create stock ledger entry) - matching website logic
       for (final item in items) {
-        await _supabase.rpc(
-          'add_stock_out',
-          params: {
-            'p_branch_id': branchId,
-            'p_product_id': item.productId,
-            'p_quantity': item.quantity,
-            'p_reason': 'Billing',
-            'p_reference_id': bill.id,
-            'p_created_by': userId,
-          },
-        );
+        // Get current stock
+        final currentStockData = await _supabase
+            .from('current_stock')
+            .select()
+            .eq('branch_id', branchId)
+            .eq('product_id', item.productId)
+            .maybeSingle();
+
+        final previousStock =
+            (currentStockData?['quantity'] as num?)?.toInt() ?? 0;
+        final newStock = previousStock - item.quantity;
+
+        // Create stock ledger entry
+        await _supabase.from('stock_ledger').insert({
+          'tenant_id': tenantId,
+          'branch_id': branchId,
+          'product_id': item.productId,
+          'transaction_type': 'stock_out',
+          'quantity': -item.quantity,
+          'previous_stock': previousStock,
+          'current_stock': newStock,
+          'reference_id': bill.id,
+          'reason': 'Billing - Invoice $invoiceNumber',
+          'created_by': userId,
+        });
+
+        // Update current stock
+        if (currentStockData != null) {
+          await _supabase
+              .from('current_stock')
+              .update({'quantity': newStock})
+              .eq('id', currentStockData['id']);
+        }
       }
 
       return bill;

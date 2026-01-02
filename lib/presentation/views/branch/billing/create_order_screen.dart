@@ -377,7 +377,7 @@ class _CreateOrderScreenState extends State<CreateOrderScreen>
 
   Future<void> _createOrder() async {
     if (_authController == null) return;
-    final branchId = _authController!.branchId;
+    final branchId = _effectiveBranchId;
     if (branchId == null) {
       Get.snackbar('Error', 'Branch not selected');
       return;

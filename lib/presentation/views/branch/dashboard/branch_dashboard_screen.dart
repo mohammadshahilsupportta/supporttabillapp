@@ -428,39 +428,67 @@ class _DashboardTab extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Quick Actions
+            // Quick Actions - matching website design
             Text('Quick Actions', style: theme.textTheme.titleLarge),
             const SizedBox(height: 12),
-            GridView.count(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              childAspectRatio: 1.5,
-              children: [
-                _buildActionCard(
-                  context,
-                  'Order',
-                  Icons.shopping_cart,
-                  Colors.green,
-                  () => Get.toNamed(AppRoutes.billsList),
-                ),
-                _buildActionCard(
-                  context,
-                  'Customers',
-                  Icons.person,
-                  Colors.orange,
-                  () => Get.toNamed(AppRoutes.customersList),
-                ),
-                _buildActionCard(
-                  context,
-                  'Products',
-                  Icons.shopping_bag,
-                  Colors.purple,
-                  () => Get.toNamed(AppRoutes.productsList),
-                ),
-              ],
+            Obx(
+              () => Column(
+                children: [
+                  // Sales & Billing Card
+                  _buildQuickActionCard(
+                    context: context,
+                    icon: Icons.shopping_cart,
+                    iconColor: Colors.green,
+                    title: 'Sales & Billing',
+                    value: dc.formatCurrency(dc.totalSales.value),
+                    valueColor: Colors.green,
+                    subtitle:
+                        '${dc.salesCount.value} bills this ${dc.periodDisplayName.toLowerCase()}',
+                    primaryButtonText: 'New Bill',
+                    primaryButtonColor: Colors.green,
+                    onPrimaryPressed: () => Get.toNamed(AppRoutes.posBilling),
+                    secondaryButtonText: 'View Bills',
+                    onSecondaryPressed: () => Get.toNamed(AppRoutes.billsList),
+                  ),
+                  const SizedBox(height: 12),
+                  // Stock Management Card
+                  _buildQuickActionCard(
+                    context: context,
+                    icon: Icons.inventory_2,
+                    iconColor: Colors.blue,
+                    title: 'Stock Management',
+                    value: dc.formatCurrency(dc.stockValue.value),
+                    valueColor: Colors.blue,
+                    subtitle: 'Total stock value',
+                    primaryButtonText: 'View Stock',
+                    primaryButtonColor: Colors.blue,
+                    onPrimaryPressed: () => Get.toNamed(AppRoutes.stockList),
+                    secondaryButtonText: 'Add Stock',
+                    onSecondaryPressed: () => Get.toNamed(AppRoutes.stockIn),
+                  ),
+                  const SizedBox(height: 12),
+                  // Profit & Expenses Card
+                  _buildQuickActionCard(
+                    context: context,
+                    icon: Icons.trending_up,
+                    iconColor: Colors.purple,
+                    title: 'Profit & Expenses',
+                    value: dc.formatCurrency(dc.totalProfit.value),
+                    valueColor: dc.totalProfit.value >= 0
+                        ? Colors.green
+                        : Colors.red,
+                    subtitle:
+                        '${dc.profitMargin.value.toStringAsFixed(1)}% profit margin',
+                    primaryButtonText: 'Add Expense',
+                    primaryButtonColor: Colors.purple,
+                    onPrimaryPressed: () =>
+                        Get.toNamed(AppRoutes.createExpense),
+                    secondaryButtonText: 'Add Purchase',
+                    onSecondaryPressed: () =>
+                        Get.toNamed(AppRoutes.purchaseCreate),
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 24),
 
@@ -577,34 +605,93 @@ class _DashboardTab extends StatelessWidget {
     );
   }
 
-  Widget _buildActionCard(
-    BuildContext context,
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
+  Widget _buildQuickActionCard({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+    required Color valueColor,
+    required String subtitle,
+    required String primaryButtonText,
+    required Color primaryButtonColor,
+    required VoidCallback onPrimaryPressed,
+    required String secondaryButtonText,
+    required VoidCallback onSecondaryPressed,
+  }) {
+    final theme = Theme.of(context);
+
     return Card(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with icon and title
+            Row(
+              children: [
+                Icon(icon, color: iconColor, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                child: Icon(icon, color: color, size: 24),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Value and subtitle
+            Text(
+              value,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: valueColor,
               ),
-              const SizedBox(height: 8),
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-            ],
-          ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Action buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: onPrimaryPressed,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryButtonColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(primaryButtonText),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onSecondaryPressed,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(secondaryButtonText),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );

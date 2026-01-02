@@ -708,10 +708,7 @@ class _DashboardTabState extends State<_DashboardTab> {
                   const SizedBox(height: 24),
 
                   // ========== QUICK ACTIONS - Primary Focus ==========
-                  if (dc.totalSales.value > 0)
-                    _buildQuickActionsSection(context, dc)
-                  else
-                    const SizedBox.shrink(),
+                  _buildQuickActionsSection(context, dc),
                 ],
               );
             }),
@@ -873,271 +870,162 @@ class _DashboardTabState extends State<_DashboardTab> {
     DashboardController dc,
   ) {
     final theme = Theme.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Quick Actions', style: theme.textTheme.titleLarge),
         const SizedBox(height: 12),
         Obx(
-          () => GridView.count(
-            crossAxisCount: 1,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            childAspectRatio: 2.5,
+          () => Column(
             children: [
               // Sales & Billing Card
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.shopping_cart,
-                            color: Colors.green.shade600,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Sales & Billing',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Flexible(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  dc.formatCurrencyIndian(dc.totalSales.value),
-                                  style: theme.textTheme.headlineMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.green.shade600,
-                                      ),
-                                ),
-                                Text(
-                                  '${dc.salesCount.value} bills this ${dc.periodDisplayName.toLowerCase()}',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Flexible(
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              alignment: WrapAlignment.end,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: () =>
-                                      Get.toNamed(AppRoutes.productsList),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.green.shade600,
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  child: const Text('View Products'),
-                                ),
-                                OutlinedButton(
-                                  onPressed: () =>
-                                      Get.toNamed(AppRoutes.createProduct),
-                                  child: const Text('Add Product'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+              _buildQuickActionCard(
+                context: context,
+                icon: Icons.shopping_cart,
+                iconColor: Colors.green,
+                title: 'Sales & Billing',
+                value: dc.formatCurrencyIndian(dc.totalSales.value),
+                valueColor: Colors.green,
+                subtitle:
+                    '${dc.salesCount.value} bills this ${dc.periodDisplayName.toLowerCase()}',
+                primaryButtonText: 'View Products',
+                primaryButtonColor: Colors.green,
+                onPrimaryPressed: () => Get.toNamed(AppRoutes.productsList),
+                secondaryButtonText: 'Add Product',
+                onSecondaryPressed: () => Get.toNamed(AppRoutes.createProduct),
               ),
+              const SizedBox(height: 12),
               // Stock Management Card
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.inventory_2,
-                            color: Colors.blue.shade600,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Stock Management',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Flexible(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  dc.formatCurrencyIndian(dc.stockValue.value),
-                                  style: theme.textTheme.headlineMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.blue.shade600,
-                                      ),
-                                ),
-                                Text(
-                                  'Total stock value',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Flexible(
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              alignment: WrapAlignment.end,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: () =>
-                                      Get.toNamed(AppRoutes.productsList),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.blue.shade600,
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  child: const Text('View Catalogue'),
-                                ),
-                                OutlinedButton(
-                                  onPressed: () =>
-                                      Get.toNamed(AppRoutes.createProduct),
-                                  child: const Text('Add Product'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+              _buildQuickActionCard(
+                context: context,
+                icon: Icons.inventory_2,
+                iconColor: Colors.blue,
+                title: 'Stock Management',
+                value: dc.formatCurrencyIndian(dc.stockValue.value),
+                valueColor: Colors.blue,
+                subtitle: 'Total stock value',
+                primaryButtonText: 'View Catalogue',
+                primaryButtonColor: Colors.blue,
+                onPrimaryPressed: () => Get.toNamed(AppRoutes.productsList),
+                secondaryButtonText: 'Add Product',
+                onSecondaryPressed: () => Get.toNamed(AppRoutes.createProduct),
               ),
+              const SizedBox(height: 12),
               // Profit & Expenses Card
-              Card(
-                elevation: 2,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Icons.trending_up,
-                            color: Colors.purple.shade600,
-                            size: 24,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Profit & Expenses',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Flexible(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  dc.formatCurrencyIndian(dc.totalProfit.value),
-                                  style: theme.textTheme.headlineMedium
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: dc.totalProfit.value >= 0
-                                            ? Colors.green.shade600
-                                            : Colors.red.shade600,
-                                      ),
-                                ),
-                                Text(
-                                  '${dc.profitMargin.value.toStringAsFixed(1)}% profit margin',
-                                  style: theme.textTheme.bodySmall?.copyWith(
-                                    color: Colors.grey.shade600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Flexible(
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              alignment: WrapAlignment.end,
-                              children: [
-                                ElevatedButton(
-                                  onPressed: () =>
-                                      Get.toNamed(AppRoutes.branchDetails),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: Colors.purple.shade600,
-                                    foregroundColor: Colors.white,
-                                  ),
-                                  child: const Text('View Branches'),
-                                ),
-                                OutlinedButton(
-                                  onPressed: () =>
-                                      Get.toNamed(AppRoutes.branchCreate),
-                                  child: const Text('Add Branch'),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+              _buildQuickActionCard(
+                context: context,
+                icon: Icons.trending_up,
+                iconColor: Colors.purple,
+                title: 'Profit & Expenses',
+                value: dc.formatCurrencyIndian(dc.totalProfit.value),
+                valueColor: dc.totalProfit.value >= 0
+                    ? Colors.green
+                    : Colors.red,
+                subtitle:
+                    '${dc.profitMargin.value.toStringAsFixed(1)}% profit margin',
+                primaryButtonText: 'View Branches',
+                primaryButtonColor: Colors.purple,
+                onPrimaryPressed: () => Get.toNamed(AppRoutes.branchesList),
+                secondaryButtonText: 'Add Branch',
+                onSecondaryPressed: () => Get.toNamed(AppRoutes.branchCreate),
               ),
             ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildQuickActionCard({
+    required BuildContext context,
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required String value,
+    required Color valueColor,
+    required String subtitle,
+    required String primaryButtonText,
+    required Color primaryButtonColor,
+    required VoidCallback onPrimaryPressed,
+    required String secondaryButtonText,
+    required VoidCallback onSecondaryPressed,
+  }) {
+    final theme = Theme.of(context);
+
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header with icon and title
+            Row(
+              children: [
+                Icon(icon, color: iconColor, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Value and subtitle
+            Text(
+              value,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: valueColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.grey.shade600,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Action buttons
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: onPrimaryPressed,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryButtonColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(primaryButtonText),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onSecondaryPressed,
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(secondaryButtonText),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
