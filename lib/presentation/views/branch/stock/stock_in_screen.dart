@@ -36,7 +36,7 @@ class _StockInScreenState extends State<StockInScreen> {
     } catch (e) {
       print('StockInScreen: ProductController not found: $e');
     }
-    
+
     // Check if product_id was passed as argument
     final args = Get.arguments as Map<String, dynamic>?;
     if (args != null && args['product_id'] != null) {
@@ -142,303 +142,307 @@ class _StockInScreenState extends State<StockInScreen> {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-          return ListView(
-            padding: const EdgeInsets.all(16),
-            children: [
-              // Product Selection Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.add_box,
-                              color: Colors.green,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'Stock In Form',
-                            style: theme.textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Product Dropdown
-                      DropdownButtonFormField<String>(
-                        value: _selectedProductId,
-                        decoration: InputDecoration(
-                          labelText: 'Select Product *',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          prefixIcon: const Icon(Icons.inventory_2),
-                        ),
-                        items: _productController!.products
-                            .where((p) => p.isActive)
-                            .map<DropdownMenuItem<String>>((product) {
-                              return DropdownMenuItem<String>(
-                                value: product.id,
-                                child: Text(
-                                  '${product.name} ${product.sku != null ? "(${product.sku})" : ""}',
-                                  overflow: TextOverflow.ellipsis,
+                return ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    // Product Selection Card
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.add_box,
+                                    color: Colors.green,
+                                  ),
                                 ),
-                              );
-                            })
-                            .toList(),
-                        onChanged: (value) {
-                          setState(() => _selectedProductId = value);
-                        },
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please select a product';
-                          }
-                          return null;
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Stock In Form',
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 20),
 
-              // Product Info Card (when product is selected)
-              if (_selectedProduct != null) ...[
-                Card(
-                  color: Colors.blue.shade50,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildInfoItem(
-                                'Product Name',
-                                _selectedProduct!.name,
+                            // Product Dropdown
+                            DropdownButtonFormField<String>(
+                              value: _selectedProductId,
+                              isExpanded: true,
+                              decoration: InputDecoration(
+                                labelText: 'Select Product *',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                prefixIcon: const Icon(Icons.inventory_2),
                               ),
-                            ),
-                            Expanded(
-                              child: _buildInfoItem(
-                                'Unit',
-                                _selectedProduct!.unit,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildInfoItem(
-                                'Current Stock',
-                                '$_currentStock ${_selectedProduct!.unit}',
-                                valueColor: Colors.blue,
-                              ),
-                            ),
-                            Expanded(
-                              child: _buildInfoItem(
-                                'Selling Price',
-                                '₹${_selectedProduct!.sellingPrice.toStringAsFixed(2)}',
-                              ),
+                              items: _productController!.products
+                                  .where((p) => p.isActive)
+                                  .map<DropdownMenuItem<String>>((product) {
+                                    return DropdownMenuItem<String>(
+                                      value: product.id,
+                                      child: Text(
+                                        '${product.name}${product.sku != null ? " (${product.sku})" : ""}',
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
+                                    );
+                                  })
+                                  .toList(),
+                              onChanged: (value) {
+                                setState(() => _selectedProductId = value);
+                              },
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please select a product';
+                                }
+                                return null;
+                              },
                             ),
                           ],
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-              ],
+                    const SizedBox(height: 16),
 
-              // Quantity Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Quantity to Add',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _quantityController,
-                        keyboardType: TextInputType.number,
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        decoration: InputDecoration(
-                          hintText: '0',
-                          suffixText: _selectedProduct?.unit ?? 'units',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return 'Please enter quantity';
-                          }
-                          if (int.tryParse(value) == null ||
-                              int.parse(value) < 1) {
-                            return 'Quantity must be at least 1';
-                          }
-                          return null;
-                        },
-                        onChanged: (_) => setState(() {}),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // New Stock Preview
-              if (_selectedProduct != null &&
-                  (int.tryParse(_quantityController.text) ?? 0) > 0)
-                Card(
-                  color: Colors.green.shade50,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.check_circle,
-                            color: Colors.green,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
+                    // Product Info Card (when product is selected)
+                    if (_selectedProduct != null) ...[
+                      Card(
+                        color: Colors.blue.shade50,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
                           child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text(
-                                'New Stock After Adding:',
-                                style: TextStyle(fontWeight: FontWeight.w600),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildInfoItem(
+                                      'Product Name',
+                                      _selectedProduct!.name,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _buildInfoItem(
+                                      'Unit',
+                                      _selectedProduct!.unit,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '${_currentStock + (int.tryParse(_quantityController.text) ?? 0)} ${_selectedProduct!.unit}',
-                                style: theme.textTheme.headlineSmall?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.green.shade700,
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _buildInfoItem(
+                                      'Current Stock',
+                                      '$_currentStock ${_selectedProduct!.unit}',
+                                      valueColor: Colors.blue,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: _buildInfoItem(
+                                      'Selling Price',
+                                      '₹${_selectedProduct!.sellingPrice.toStringAsFixed(2)}',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // Quantity Card
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Quantity to Add',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _quantityController,
+                              keyboardType: TextInputType.number,
+                              style: theme.textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: '0',
+                                suffixText: _selectedProduct?.unit ?? 'units',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
-                              Text(
-                                'Current: $_currentStock + Adding: ${_quantityController.text}',
-                                style: theme.textTheme.bodySmall?.copyWith(
-                                  color: Colors.grey,
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter quantity';
+                                }
+                                if (int.tryParse(value) == null ||
+                                    int.parse(value) < 1) {
+                                  return 'Quantity must be at least 1';
+                                }
+                                return null;
+                              },
+                              onChanged: (_) => setState(() {}),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // New Stock Preview
+                    if (_selectedProduct != null &&
+                        (int.tryParse(_quantityController.text) ?? 0) > 0)
+                      Card(
+                        color: Colors.green.shade50,
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.green.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'New Stock After Adding:',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${_currentStock + (int.tryParse(_quantityController.text) ?? 0)} ${_selectedProduct!.unit}',
+                                      style: theme.textTheme.headlineSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green.shade700,
+                                          ),
+                                    ),
+                                    Text(
+                                      'Current: $_currentStock + Adding: ${_quantityController.text}',
+                                      style: theme.textTheme.bodySmall
+                                          ?.copyWith(color: Colors.grey),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
+                      ),
+                    const SizedBox(height: 16),
+
+                    // Reason Card
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Reason (Optional)',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            TextFormField(
+                              controller: _reasonController,
+                              maxLines: 3,
+                              decoration: InputDecoration(
+                                hintText:
+                                    'e.g., New purchase from supplier, Stock adjustment, etc.',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                alignLabelWithHint: true,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Buttons
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: () => Get.back(),
+                            style: OutlinedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: const Text('Cancel'),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: _isLoading || _selectedProduct == null
+                                ? null
+                                : _submit,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            icon: _isLoading
+                                ? const SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.add),
+                            label: Text(_isLoading ? 'Adding...' : 'Add Stock'),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                ),
-              const SizedBox(height: 16),
-
-              // Reason Card
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Reason (Optional)',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: _reasonController,
-                        maxLines: 3,
-                        decoration: InputDecoration(
-                          hintText:
-                              'e.g., New purchase from supplier, Stock adjustment, etc.',
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          alignLabelWithHint: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Get.back(),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _isLoading || _selectedProduct == null
-                          ? null
-                          : _submit,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                      icon: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.add),
-                      label: Text(_isLoading ? 'Adding...' : 'Add Stock'),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-            ],
-          );
-        }),
+                    const SizedBox(height: 32),
+                  ],
+                );
+              }),
       ),
     );
   }

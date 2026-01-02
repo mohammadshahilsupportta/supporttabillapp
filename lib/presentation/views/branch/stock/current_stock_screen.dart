@@ -119,7 +119,8 @@ class CurrentStockScreen extends StatelessWidget {
                           ),
                         ),
                         title: Text(
-                          'Product ID: ${stock.productId}',
+                          stock.product?.name ??
+                              'Product ID: ${stock.productId}',
                           style: theme.textTheme.bodyLarge?.copyWith(
                             fontWeight: FontWeight.w600,
                           ),
@@ -232,7 +233,7 @@ class CurrentStockScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Product: ${stock.productId}',
+              stock.product?.name ?? 'Product: ${stock.productId}',
               style: Theme.of(
                 context,
               ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
@@ -258,36 +259,6 @@ class CurrentStockScreen extends StatelessWidget {
                   AppRoutes.stockOut,
                   arguments: {'product_id': stock.productId},
                 );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.tune, color: Colors.orange),
-              title: const Text('Adjust Stock'),
-              onTap: () {
-                Navigator.pop(context);
-                Get.toNamed(
-                  AppRoutes.stockAdjust,
-                  arguments: {'product_id': stock.productId},
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.swap_horiz, color: Colors.purple),
-              title: const Text('Transfer Stock'),
-              onTap: () {
-                Navigator.pop(context);
-                Get.toNamed(
-                  AppRoutes.stockTransfer,
-                  arguments: {'product_id': stock.productId},
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.history, color: Colors.blue),
-              title: const Text('View Ledger'),
-              onTap: () {
-                Navigator.pop(context);
-                Get.toNamed(AppRoutes.stockLedger);
               },
             ),
           ],
@@ -327,24 +298,6 @@ class CurrentStockScreen extends StatelessWidget {
               onTap: () {
                 Navigator.pop(context);
                 Get.toNamed(AppRoutes.stockOut);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.tune, color: Colors.orange),
-              title: const Text('Adjust Stock'),
-              subtitle: const Text('Correct stock discrepancies'),
-              onTap: () {
-                Navigator.pop(context);
-                Get.toNamed(AppRoutes.stockAdjust);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.swap_horiz, color: Colors.purple),
-              title: const Text('Stock Transfer'),
-              subtitle: const Text('Transfer between branches'),
-              onTap: () {
-                Navigator.pop(context);
-                Get.toNamed(AppRoutes.stockTransfer);
               },
             ),
           ],
